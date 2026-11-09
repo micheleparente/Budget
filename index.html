@@ -117,7 +117,9 @@ h1,h2,h3{margin:0;text-wrap:balance}
 .chips::-webkit-scrollbar{display:none}
 .chips button{flex:none;height:36px;padding:0 14px;border-radius:18px;border:1px solid var(--line);background:var(--card);font-size:14px;font-weight:600;color:var(--sub)}
 .chips button[aria-pressed="true"]{background:var(--ink);color:var(--bg);border-color:var(--ink)}
-.sum-line{display:flex;gap:16px;flex-wrap:wrap;font-size:14px}
+.sum-line{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;font-size:16px;margin:4px 0}
+.sum-line>span{display:flex;flex-direction:column;min-width:0}
+.sum-line .sl-l{font-size:12px;font-weight:600;color:var(--sub);margin-bottom:2px}
 .sum-line strong{font-weight:800}
 .sec-title{font-size:13px;font-weight:700;color:var(--sub);text-transform:uppercase;letter-spacing:.6px;margin:4px 4px -6px}
 /* tabelle */
@@ -670,7 +672,7 @@ function vRegistro(){
     if(r.k==='stip'){const sim=r.n.stato!=='confermato';return `<button class="item ${sim?'is-prev':''}" data-act="editstip" data-k="${r.mm}"><span class="badge in">€</span><span class="grow"><span class="t">Stipendio ${nomeStip(r.mm)}</span><span class="s">Entrata · ${sim?'stima dall\'anno prima <span class="chip sim">SIMULATO</span>':'netto confermato'}</span></span><span class="amt pos">+${eur(r.importo)}</span></button>`}
     const x=r.x;const tl=x.tipo==='spot'?'Entrata spot':x.tipo==='reso'?'Storno / reso · '+esc(catName(x.categoria)):esc(catName(x.categoria));
     return `<button class="item" data-act="editmov" data-id="${esc(x.id)}"><span class="badge ${r.entrata?'in':''}">${r.entrata?'+':esc(initials(catName(x.categoria)))}</span><span class="grow"><span class="t">${esc(x.descrizione||catName(x.categoria))}</span><span class="s">${tl}${x.data?' · '+fmtDate(x.data):''}${x.metodo?' · '+esc(x.metodo):''}${x.quota?' · quota '+esc(x.quota):''}</span></span><span class="amt ${r.entrata?'pos':''}">${r.entrata?'+':'−'}${eur(r.importo)}${x.gruppo?`<span class="s" style="display:block;font-weight:500">di ${eur(+x.totale||0)}</span>`:''}</span></button>`};
-  return header('Registro')+chips+`<a class="banner" href="#previsioni" style="background:var(--chip);color:var(--accent-ink);text-decoration:none"><span><strong>Spese previste e ricorrenti</strong> · affitto, rate, abbonamenti, budget</span>${ICON.chev}</a><div class="sum-line"><span>Uscite <strong class="num">${eur(usc)}</strong></span><span>Entrate <strong class="num pos">${eur(ent)}</strong>${entSim?'<span class="simtag">(Simulate)</span>':''}</span><span class="muted">Ancora previste <strong class="num">${eur(pre)}</strong></span></div>`+
+  return header('Registro')+chips+`<a class="banner" href="#previsioni" style="background:var(--chip);color:var(--accent-ink);text-decoration:none"><span><strong>Spese previste e ricorrenti</strong> · affitto, rate, abbonamenti, budget</span>${ICON.chev}</a><div class="sum-line"><span><span class="sl-l">Entrate</span><strong class="num pos">${eur(ent)}</strong>${entSim?'<span class="simtag">(Simulate)</span>':''}</span><span><span class="sl-l">Uscite</span><strong class="num">${eur(usc)}</strong><span class="simtag">pagate</span></span><span><span class="sl-l">Previste</span><strong class="num">${eur(pre)}</strong><span class="simtag">da pagare</span></span></div>`+
    (budRows&&(F==='tutti'||F==='uscite')?`<p class="sec-title">Budget del mese</p><section class="card tight"><div class="list">${budRows}</div></section>`:'')+
    `<p class="sec-title">Movimenti</p><section class="card tight"><div class="list">${rows.map(rowHtml).join('')||'<p class="empty">Nessun movimento con questo filtro.</p>'}</div></section>`;
 }
