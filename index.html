@@ -231,6 +231,13 @@ tr.click{cursor:pointer}
 }
 #view.fit .ring-center .big{font-size:calc(var(--ring) * .15);letter-spacing:-.5px}
 #view.fit .ring-center .lbl{font-size:max(11px,calc(var(--ring) * .065))}
+.switch{width:100%;display:flex;align-items:center;gap:12px;justify-content:space-between;text-align:left;background:var(--card);border:1px solid var(--line);border-radius:var(--r-sm);padding:12px 14px;min-height:56px}
+.switch .sw-t{display:flex;flex-direction:column;gap:2px;font-size:15px}
+.switch .sw-k{flex:none;width:50px;height:30px;border-radius:15px;background:var(--soft);position:relative;transition:background .2s}
+.switch .sw-k::after{content:"";position:absolute;top:3px;left:3px;width:24px;height:24px;border-radius:12px;background:#fff;box-shadow:0 1px 3px rgba(0,0,0,.25);transition:transform .2s}
+.switch[aria-checked="true"] .sw-k{background:var(--pos)}
+.switch[aria-checked="true"] .sw-k::after{transform:translateX(20px)}
+.badge{line-height:1.05;text-align:center}
 
 </style>
 </head>
@@ -542,42 +549,57 @@ function vHome(){
 }
 
 // ---------- DASHBOARD ----------
+const n0=v=>(v>0?'+':v<0?'−':'')+Math.round(Math.abs(v)).toLocaleString('it-IT');
+function saldiChart(y){
+  const W=344,H=196,top=22,bot=40,pl=4,step=(W-pl*2)/12,bw=Math.min(20,step-6);
+  const vals=y.mesi.map(m=>m.saldo);const mx=Math.max(1,...vals),mn=Math.min(0,...vals);const span=mx-mn||1;
+  const Yv=v=>top+(mx-v)/span*(H-top-bot);const z=Yv(0);
+  const g=y.mesi.map((m,i)=>{const v=m.saldo,x=pl+i*step+(step-bw)/2,yy=Math.min(Yv(v),z),h=Math.max(1.5,Math.abs(Yv(v)-z));const fut=m.stato==='futuro',sel=i===S.mese-1;
+    const col=v>=0?'var(--pos)':'var(--neg)';const ty=v>=0?yy-5:yy+h+11;
+    return `<g data-act="setmese" data-k="${i+1}" style="cursor:pointer"><rect x="${(pl+i*step).toFixed(1)}" y="0" width="${step.toFixed(1)}" height="${H}" fill="transparent"/>${sel?`<rect x="${(pl+i*step+1).toFixed(1)}" y="2" width="${(step-2).toFixed(1)}" height="${H-4}" rx="8" fill="var(--soft)"/>`:''}<rect x="${x.toFixed(1)}" y="${yy.toFixed(1)}" width="${bw}" height="${h.toFixed(1)}" rx="4" fill="${col}" opacity="${fut?.4:1}"/><text x="${(x+bw/2).toFixed(1)}" y="${ty.toFixed(1)}" font-size="9" font-weight="700" fill="${col}" text-anchor="middle">${n0(v)}</text><text x="${(x+bw/2).toFixed(1)}" y="${H-8}" font-size="10" font-weight="${sel?800:500}" fill="${sel?'var(--ink)':'var(--sub)'}" text-anchor="middle">${MB[i].charAt(0)}</text></g>`}).join('');
+  const chiusi=y.mesi.filter(m=>m.stato!=='futuro');const best=chiusi.length?chiusi.reduce((a,b)=>b.saldo>a.saldo?b:a):null,worst=chiusi.length?chiusi.reduce((a,b)=>b.saldo<a.saldo?b:a):null;
+  const pos=y.mesi.filter(m=>m.saldo>=0).length;
+  return `<section class="card" aria-label="Saldo mese per mese"><div class="row-head"><h2>Saldo mese per mese</h2><span class="small muted">${pos} sopra, ${12-pos} sotto lo zero</span></div><svg viewBox="0 0 ${W} ${H}" width="100%" role="img" aria-label="Saldo di ogni mese: barre verdi sopra lo zero, arancioni sotto; tocca un mese per aprirlo"><line x1="0" x2="${W}" y1="${z.toFixed(1)}" y2="${z.toFixed(1)}" stroke="var(--line)" stroke-width="1.5"/>${g}</svg><div class="legend"><span>${best?`Migliore <strong class="pos">${MB[best.m-1]} ${n0(best.saldo)}</strong>`:''}</span><span>${worst?`Peggiore <strong class="neg">${MB[worst.m-1]} ${n0(worst.saldo)}</strong>`:''}</span></div><p class="note">Barre chiare: mesi futuri (previsione). Tocca un mese per aprirlo.</p></section>`;
+}
+function prossimeScadenze(){
+  const t=today(),t0=new Date(t.getFullYear(),t.getMonth(),t.getDate()),lim=new Date(t0.getTime()+31*864e5);
+  const out=[];[t.getFullYear(),t.getFullYear()+1].forEach(a=>istanze(S.D,a,t).forEach(i=>{if(!i.p.scadenza||i.stato==='effettivo'&&!i.auto)return;const d=dataAddebito(a,i.m,i.p.giorno||28);if(d<t0&&(i.stato!=='daconfermare'||t0-d>31*864e5))return;if(d>lim)return;out.push({i,d,a})}));
+  return out.sort((a,b)=>a.d-b.d);
+}
 function vDashboard(){
   if(!cats().length)return header('Dashboard')+onboarding();
   const y=Y(),mi=S.mese-1,m=y.mesi[mi];
   const nDc=y.ist.filter(i=>i.stato==='daconfermare').length;
   const banner=nDc?`<button class="banner" data-act="godaconf"><span><strong>${nDc} ${nDc===1?'voce':'voci'} da confermare</strong> · importo vero ancora da inserire</span>${ICON.chev}</button>`:'';
-  // ritmo di spesa
-  const rows=righeMese(S.anno,S.mese);
-  const eff=r2(rows.filter(r=>r.k!=='stip'&&r.stato==='effettivo').reduce((a,r)=>a+(r.k==='mov'&&r.x.tipo==='spot'?0:(r.entrata?-r.importo:r.importo)),0));
-  const prev=r2(rows.filter(r=>r.stato!=='effettivo').reduce((a,r)=>a+r.importo,0));
-  let ritmo='';
-  if(m.stato==='corrente'){const t=today();const dim=new Date(S.anno,S.mese,0).getDate();const g=t.getDate(),left=dim-g+1;const quota=r2(m.disp*g/dim);
-    ritmo=`<section class="card"><div class="row-head"><h2>Ritmo di spesa</h2><span class="small muted">giorno ${g} di ${dim}</span></div><div class="cmp" style="grid-template-columns:1fr auto"><span>Già uscito</span><strong class="num">${eur(eff)}</strong><span>Ancora previsto nel mese</span><strong class="num">${eur(prev)}</strong><span>Liberi fino a fine mese</span><strong class="num ${m.saldo<0?'neg':'pos'}">${sgn(m.saldo)}</strong><span>Puoi spendere al giorno</span><strong class="num">${m.saldo>0?eur(r2(m.saldo/left)):'—'}</strong></div><div class="bar" style="height:10px"><i style="width:${Math.min(100,m.disp?eff/m.disp*100:0).toFixed(1)}%;height:10px;background:var(--accent)"></i><b style="left:${Math.min(100,g/dim*100).toFixed(1)}%"></b></div><p class="note">Barra: quanto è già uscito sulla disponibilità del mese. ▏ = punto del mese in cui sei (a questo ritmo "giusto" saresti a ${eur(quota)}).</p></section>`}
-  // fisse e variabili
-  const fv=`<a class="card" href="#prospetto" style="color:inherit;text-decoration:none"><div class="row-head"><h2>Fisse e variabili</h2>${ICON.chev}</div>${splitBar(m)}</a>`;
-  // categorie
-  const list=y.cat.map(c=>({c,v:c.mesi[mi],a:media(c,S.anno)})).filter(x=>Math.abs(x.v)>0.004).sort((a,b)=>b.v-a.v);
-  const shown=S.catAll?list:list.slice(0,6);
-  const scale=Math.max(1,...shown.map(x=>Math.max(x.v,x.a)));
-  const catCard=`<section class="card" aria-label="Categorie del mese"><div class="row-head"><h2>Categorie del mese</h2><span class="small muted">▏ media</span></div><div>${shown.map(x=>{const d=x.a?Math.round((x.v-x.a)/x.a*100):0;const up=x.v>x.a+0.004;return `<button class="catrow" data-act="dettcat" data-id="${esc(x.c.id)}"><span class="l1"><span>${esc(x.c.nome)}</span><span class="num">${eur(x.v)}</span></span><span class="bar"><i style="width:${Math.max(0,x.v/scale*100).toFixed(1)}%;background:${up?'var(--neg)':'var(--pos)'}"></i><b style="left:${(x.a/scale*100).toFixed(1)}%"></b></span><span class="l2"><span class="num">Media ${eur(x.a)}</span><span class="num ${up?'neg':'pos'}">${x.a?(d>0?'+':'')+d+'%':'nuova'}</span></span></button>`}).join('')||'<p class="empty">Nessuna spesa in questo mese.</p>'}</div>${list.length>6?`<button class="link" data-act="catall">${S.catAll?'Mostra meno':`Mostra tutte (${list.length})`}</button>`:''}</section>`;
-  // scadenze
-  const dues=y.ist.filter(i=>i.m===S.mese).sort((a,b)=>(a.p.giorno||99)-(b.p.giorno||99)||b.importo-a.importo);
-  const dueCard=`<section class="card tight" aria-label="Scadenze del mese"><div class="row-head" style="padding-top:12px"><h2>Scadenze del mese</h2><a class="link" href="#previsioni" style="text-decoration:none;display:inline-flex;align-items:center">Gestisci</a></div><div class="list">${(S.dueAll?dues:dues.slice(0,5)).map(i=>istRow(i)).join('')||'<p class="empty">Nessuna scadenza prevista.</p>'}</div>${dues.length>5?`<button class="link" data-act="dueall">${S.dueAll?'Mostra meno':`Mostra tutte (${dues.length})`}</button>`:''}</section>`;
-  // netti vs standard
-  const W=320,H=110,bw=18;const vals=[...Array(12).keys()].map(i=>y.netti[i+1]);const mx=Math.max(y.std,...vals.map(n=>n?n.netto:0))||1;
-  const bars=vals.map((n,i)=>{if(!n)return '';const h=Math.max(2,n.netto/mx*(H-24));const x=8+i*(W-16)/12;return `<rect x="${x.toFixed(1)}" y="${(H-14-h).toFixed(1)}" width="${bw}" height="${h.toFixed(1)}" rx="3" fill="${n.stato==='confermato'?'var(--accent)':'var(--soft)'}"${i===mi?' stroke="var(--ink)" stroke-width="1.5"':''}/>`}).join('');
-  const sy=(H-14-y.std/mx*(H-24)).toFixed(1);
-  const netti=`<a class="card" href="#entrate" style="color:inherit;text-decoration:none"><div class="row-head"><h2>Netti e stipendio standard</h2>${ICON.chev}</div><svg viewBox="0 0 ${W} ${H}" width="100%" role="img" aria-label="Netti mese per mese confrontati con lo stipendio standard">${bars}<line x1="4" x2="${W-4}" y1="${sy}" y2="${sy}" stroke="var(--neg)" stroke-width="1.5" stroke-dasharray="4 4"/>${[0,3,6,9,11].map(i=>`<text x="${(8+i*(W-16)/12+bw/2).toFixed(1)}" y="${H-2}" font-size="10" fill="var(--sub)" text-anchor="middle">${MB[i]}</text>`).join('')}</svg><p class="note">Barre piene: netti confermati · chiare: simulati · tratteggio: standard ${eur(y.std)}.</p></a>`;
-  // metodi di pagamento
-  const met={};S.D.movimenti.filter(x=>x.anno===S.anno&&x.mese===S.mese&&x.tipo==='spesa').forEach(x=>{const k=x.metodo||'Non indicato';met[k]=(met[k]||0)+(+x.importo)});
-  const metTot=Object.values(met).reduce((a,b)=>a+b,0);
-  const metCard=metTot?`<section class="card"><h2>Pagato con</h2>${Object.entries(met).sort((a,b)=>b[1]-a[1]).map(([k,v])=>`<div><div class="row-head small"><span>${esc(k)}</span><span class="num">${eur(r2(v))}</span></div><div class="bar"><i style="width:${(v/metTot*100).toFixed(1)}%;background:var(--accent)"></i></div></div>`).join('')}<p class="note">Solo le uscite registrate del mese, senza le previste.</p></section>`:'';
+  // proiezione di fine mese (mese in corso)
+  let proj='';
+  if(m.stato==='corrente'){const t=today(),dim=new Date(S.anno,S.mese,0).getDate(),g=t.getDate(),left=dim-g+1;
+    const varIds=new Set(cats().filter(c=>c.tipo!=='fissa').map(c=>c.id));
+    const varReale=r2(S.D.movimenti.filter(x=>x.anno===S.anno&&x.mese===S.mese&&varIds.has(x.categoria)).reduce((a,x)=>a+(x.tipo==='reso'?-1:x.tipo==='spesa'?1:0)*(+x.importo),0));
+    const ritmoG=g>0?varReale/g:0,stimaVar=r2(ritmoG*dim);
+    const extra=Math.max(0,r2(stimaVar-m.variabili));const fine=r2(m.saldo-extra);
+    proj=`<section class="card" aria-label="Fine mese"><div class="row-head"><h2>Come chiudi ${MESI[mi].toLowerCase()}</h2><span class="small muted">giorno ${g} di ${dim}</span></div>
+     <div class="tiles"><div class="tile ${fine<0?'':'hero'}" style="${fine<0?'background:var(--warn-bg);color:var(--warn-ink)':''}"><span class="t-l">Se continui così</span><span class="t-v num">${sgn(fine)}</span><span class="t-n">saldo a fine mese</span></div><div class="tile"><span class="t-l">Puoi spendere</span><span class="t-v num">${m.saldo>0?eur(r2(m.saldo/left)):'0,00 €'}</span><span class="t-n">al giorno per ${left} giorni</span></div></div>
+     <p class="note">Spese variabili finora ${eur(varReale)}, cioè ${eur(r2(ritmoG))} al giorno: a questo ritmo arrivi a circa ${eur(stimaVar)} entro fine mese${extra>0?`, ${eur(extra)} oltre il previsto`:', dentro il previsto'}.</p></section>`}
+  // prossime scadenze
+  const ps=prossimeScadenze();const t0=today();t0.setHours(0,0,0,0);
+  const fra=d=>{const n=Math.round((d-t0)/864e5);return n<0?`scaduta da ${-n} ${-n===1?'giorno':'giorni'}`:n===0?'oggi':n===1?'domani':`tra ${n} giorni`};
+  const psTot=r2(ps.reduce((a,x)=>a+x.i.importo,0));
+  const scad=`<section class="card tight" aria-label="Prossime scadenze"><div class="row-head" style="padding-top:12px"><h2>Prossime scadenze</h2><a class="link" href="#previsioni" style="text-decoration:none;display:inline-flex;align-items:center">Gestisci</a></div><div class="list">${ps.slice(0,S.dueAll?99:5).map(x=>`<button class="item" data-act="editist" data-id="${esc(x.i.p.id)}" data-k="${x.i.m}"><span class="badge">${x.d.getDate()}<br>${MB[x.d.getMonth()].toLowerCase()}</span><span class="grow"><span class="t">${esc(x.i.p.descrizione)}</span><span class="s">${fra(x.d)}${x.i.p.metodo?' · '+esc(x.i.p.metodo):''} ${x.i.stato==='daconfermare'?statoChip('daconfermare'):''}</span></span><span class="amt">−${eur(x.i.importo)}</span></button>`).join('')||'<p class="empty">Nessuna scadenza nei prossimi 30 giorni. Segna come "scadenza" rate, bollette e assicurazioni nelle previsioni.</p>'}</div>${ps.length?`<p class="note" style="padding-bottom:12px">${ps.length} nei prossimi 30 giorni · totale ${eur(psTot)}${ps.length>5?` · <button class="link" data-act="dueall" style="padding:0;min-height:0">${S.dueAll?'mostra meno':'mostra tutte'}</button>`:''}</p>`:''}</section>`;
+  // dove vanno i soldi
+  const list=y.cat.map(c=>({c,v:c.mesi[mi],a:media(c,S.anno)})).filter(x=>x.v>0.004).sort((a,b)=>b.v-a.v);
+  const shown=S.catAll?list:list.slice(0,5);
+  const dove=`<section class="card" aria-label="Dove vanno i soldi"><div class="row-head"><h2>Dove vanno i soldi</h2><span class="small muted">${MESI[mi]}</span></div>${splitBar(m)}<div>${shown.map(x=>{const pc=m.spese?Math.round(x.v/m.spese*100):0;const d=x.a?Math.round((x.v-x.a)/x.a*100):0;const up=x.v>x.a+0.004;return `<button class="catrow" data-act="dettcat" data-id="${esc(x.c.id)}"><span class="l1"><span>${esc(x.c.nome)}</span><span class="num">${eur(x.v)}</span></span><span class="bar"><i style="width:${pc}%;background:var(--accent)"></i></span><span class="l2"><span>${pc}% delle spese</span><span class="num ${up?'neg':'pos'}">${x.a?((d>0?'+':'')+d+'% sulla media'):'nuova'}</span></span></button>`}).join('')||'<p class="empty">Nessuna spesa in questo mese.</p>'}</div>${list.length>5?`<button class="link" data-act="catall">${S.catAll?'Mostra meno':`Tutte le categorie (${list.length})`}</button>`:''}</section>`;
+  // confronti
+  const yp=Y(S.anno-1);const prevM=mi>0?y.mesi[mi-1]:yp.mesi[11];const sameLY=yp.mesi[mi];
+  const chiusi=y.mesi.filter(x=>x.stato==='chiuso');const medS=chiusi.length?r2(chiusi.reduce((a,x)=>a+x.spese,0)/chiusi.length):null;
+  const cr=(l,ref)=>{if(ref==null||!(ref>0))return `<span>${l}</span><span class="muted">—</span><span></span>`;const d=r2(m.spese-ref),p=Math.round(d/ref*100);return `<span>${l}</span><span class="num muted">${eur(ref)}</span><strong class="num ${d>0?'neg':'pos'}">${d>0?'+':''}${p}%</strong>`};
+  const conf=`<section class="card" aria-label="Confronti"><h2>Spese di ${MESI[mi].toLowerCase()} a confronto</h2><div class="cmp"><span class="h">Rispetto a</span><span class="h">Spese</span><span class="h">Diff.</span>${cr('Mese prima',prevM.spese)}${cr(MESI[mi]+' '+(S.anno-1),sameLY.spese)}${cr('Media mesi chiusi',medS)}</div></section>`;
   // previsionale
   const nx=S.anno+1;let nextCard;
   if(haDati(nx)){const yn=Y(nx);nextCard=`<section class="card"><div class="row-head"><div><p class="eyebrow">Previsionale ${nx}</p><span class="num ${yn.mesi[11].avanzo<0?'neg':'pos'}" style="font-size:22px;font-weight:800">${sgn(yn.mesi[11].avanzo)}</span><p class="note">Avanzo stimato a fine ${nx} · spese ${eur(yn.mesi.reduce((a,x)=>a+x.spese,0))}</p></div><button class="pill-btn soft" data-act="anno" data-k="${nx}">Apri</button></div></section>`}
   else nextCard=`<section class="card"><div class="row-head"><div><p class="eyebrow">Previsionale ${nx}</p><p class="note">Copia previsioni e netti del ${S.anno} come simulazione.</p></div><button class="pill-btn soft" data-act="creaanno" data-k="${nx}">Crea</button></div></section>`;
-  return header('Dashboard',{badge:false})+banner+ritmo+fv+avanzoChart(y)+catCard+dueCard+netti+metCard+nextCard;
+  return header('Dashboard',{badge:false})+banner+saldiChart(y)+proj+scad+dove+conf+avanzoChart(y)+nextCard;
 }
 // dettaglio di una categoria
 function vDettaglio(){
@@ -703,7 +725,7 @@ function vPrevisioni(){
   const groups=cats().map(c=>({c,items:pv.filter(p=>p.categoria===c.id)})).filter(g=>g.items.length);
   return header('Previsioni',{month:false,h:'Previsioni '+S.anno})+`<div class="actions"><button class="pill-btn" data-act="add" data-k="prevista">+ Nuova previsione</button></div>
   <section class="card"><div class="cmp" style="grid-template-columns:auto 1fr;gap:8px 12px"><span class="chip acc">CERTO</span><span class="small">Affitto, telefono, rata auto: diventa pagata da sola il giorno di addebito. Puoi correggerla dopo.</span><span class="chip warn">VARIABILE</span><span class="small">American Express, rate: dal giorno di addebito resta "da confermare" finché non scrivi l'importo vero.</span><span class="chip sim">BUDGET</span><span class="small">Benzina, spesa: un tetto che le spese vere consumano. A mese chiuso conta solo il reale.</span></div></section>`+
-   (groups.map(g=>`<p class="sec-title">${esc(g.c.nome)}</p><section class="card tight"><div class="list">${g.items.map(p=>{const s=p.importi.filter(v=>v!=null);const same=s.length&&s.every(v=>+v===+s[0]);return `<button class="item" data-act="editprev" data-id="${esc(p.id)}"><span class="grow"><span class="t">${esc(p.descrizione)}</span><span class="s">${TIPI[p.tipo]||p.tipo} · ${mesiLabel(p.importi)}${p.giorno?' · giorno '+esc(p.giorno):''}</span></span><span class="amt">${s.length?(same?eur(+s[0]):'variabile'):'–'}</span></button>`}).join('')}</div></section>`).join('')||'<p class="empty">Nessuna previsione per il '+S.anno+'.</p>');
+   (groups.map(g=>`<p class="sec-title">${esc(g.c.nome)}</p><section class="card tight"><div class="list">${g.items.map(p=>{const s=p.importi.filter(v=>v!=null);const same=s.length&&s.every(v=>+v===+s[0]);return `<button class="item" data-act="editprev" data-id="${esc(p.id)}"><span class="grow"><span class="t">${esc(p.descrizione)}</span><span class="s">${TIPI[p.tipo]||p.tipo}${p.scadenza?' · scadenza':''} · ${mesiLabel(p.importi)}${p.giorno?' · giorno '+esc(p.giorno):''}</span></span><span class="amt">${s.length?(same?eur(+s[0]):'variabile'):'–'}</span></button>`}).join('')}</div></section>`).join('')||'<p class="empty">Nessuna previsione per il '+S.anno+'.</p>');
 }
 function vCategorie(){
   const used=c=>S.D.movimenti.some(s=>s.categoria===c)||S.D.previsioni.some(p=>p.categoria===c);
@@ -780,6 +802,7 @@ function sheetAdd(kind='uscita'){
    <div class="field k-prev"><label>Tipo</label><div class="seg" role="group" aria-label="Tipo di previsione"><button type="button" data-ptipo="certo">Importo certo</button><button type="button" data-ptipo="variabile">Variabile</button><button type="button" data-ptipo="budget">Budget</button></div><p class="note" id="a-ptnote"></p></div>
    <div class="two k-prev"><div class="field"><label for="a-pda">Dal mese</label><select id="a-pda">${meseOptions(curM())}</select></div><div class="field"><label for="a-pa">Fino a</label><select id="a-pa">${meseOptions(12)}</select></div></div>
    <div class="two k-prev"><div class="field"><label for="a-pf">Frequenza</label><select id="a-pf"><option value="1">Ogni mese</option><option value="2">Ogni 2 mesi</option><option value="3">Ogni 3 mesi</option><option value="6">Ogni 6 mesi</option><option value="12">Una volta</option></select></div><div class="field k-pg"><label for="a-pg">Giorno di addebito</label><input id="a-pg" inputmode="numeric" placeholder="es. 5"></div></div>
+   <div class="k-prev k-pscad"><div class="field k-scad"><button type="button" class="switch" id="a-scad" role="switch" aria-checked="false"><span class="sw-t"><strong>È una scadenza</strong><span class="small muted">Rata, bolletta, assicurazione: compare in "Prossime scadenze". La benzina o la spesa no.</span></span><span class="sw-k" aria-hidden="true"></span></button></div></div>
    <p class="note k-prev" id="a-pprev"></p>
    <div class="field k-desc"><label for="a-desc">Descrizione</label><input id="a-desc" autocomplete="off" placeholder="Es. Benzina, Cena, Reso Zalando…"></div>
    <div class="two k-date"><div class="field"><label for="a-data">Data</label><input id="a-data" type="date" value="${isoToday()}"></div><div class="field"><label for="a-mese">Mese di addebito</label><select id="a-mese">${meseOptions(curM())}</select></div></div>
@@ -796,14 +819,17 @@ function sheetAdd(kind='uscita'){
       const show=(c,v)=>el.querySelectorAll(c).forEach(x=>x.hidden=!v);
       show('.k-ent',verso==='entrata');show('.k-pchips',pv);show('.k-uchips',!pv);show('.k-prevnote',pv);show('.k-prev',pv);show('.k-met',!st);$('#a-metlbl').textContent=u||pv?'Metodo di pagamento':'Accreditato su';show('.k-stip',st);show('.k-cat',u||pv||sub==='reso');show('.k-desc',!st);show('.k-date',!st&&!pv);show('.k-rip',u);show('.k-resonote',verso==='entrata'&&sub==='reso');
       $('#a-implbl').textContent=st?'Netto (€)':pv?(ptipo==='budget'?'Budget al mese (€)':'Importo per addebito (€)'):'Importo (€)';
-      el.querySelectorAll('[data-ptipo]').forEach(b=>b.setAttribute('aria-pressed',b.dataset.ptipo===ptipo));$('#a-ptnote').textContent=PTN[ptipo];show('.k-pg',pv&&ptipo!=='budget');
-      if(pv)prevUpd();
+      el.querySelectorAll('[data-ptipo]').forEach(b=>b.setAttribute('aria-pressed',b.dataset.ptipo===ptipo));$('#a-ptnote').textContent=PTN[ptipo];show('.k-pg',pv&&ptipo!=='budget');show('.k-pscad',pv&&ptipo!=='budget');
+      if(pv){prevUpd();scadDraw()}
     };
+    let scad=null;const scadAuto=()=>{const c=cats().find(x=>x.id===$('#a-cat').value);return !!c&&c.tipo==='fissa'};
+    const scadDraw=()=>{const v=scad===null?scadAuto():scad;$('#a-scad').setAttribute('aria-checked',v)};
     let ptipo='certo';const PTN={certo:'Diventa pagata da sola nel giorno di addebito; puoi correggerla dopo.',variabile:'Dal giorno di addebito resta "da confermare" finché non scrivi l\'importo vero.',budget:'Tetto mensile che le spese vere consumano. A mese chiuso conta solo il reale.'};
     const prevMesi=()=>{const da=+$('#a-pda').value,a=+$('#a-pa').value,f=+$('#a-pf').value;const out=[];if(a<da)return out;for(let m=da;m<=a;m+=f){out.push(m);if(f===12)break}return out};
     const prevUpd=()=>{const ms_=prevMesi(),v=num($('#a-imp').value);$('#a-pprev').textContent=!ms_.length?'"Fino a" deve venire dopo "Dal mese".':`${ms_.length} ${ms_.length===1?'addebito':'addebiti'} nel ${S.anno}: ${ms_.map(m=>MB[m-1].toLowerCase()).join(', ')}${v>0?` · totale ${eur(r2(v*ms_.length))}`:''}.`};
     el.querySelectorAll('[data-ptipo]').forEach(b=>b.onclick=()=>{ptipo=b.dataset.ptipo;if(ptipo==='budget'){$('#a-pf').value='1'}sync()});
     ['#a-pda','#a-pa','#a-pf'].forEach(q=>$(q).addEventListener('change',prevUpd));$('#a-imp').addEventListener('input',()=>{if(verso==='prevista')prevUpd()});
+    $('#a-scad').onclick=()=>{scad=!($('#a-scad').getAttribute('aria-checked')==='true');scadDraw()};$('#a-cat').addEventListener('change',()=>{if(verso==='prevista')scadDraw()});el.querySelectorAll('.k-pchips [data-cat]').forEach(b=>b.addEventListener('click',()=>setTimeout(scadDraw)));
     sync();
     el.querySelectorAll('[data-verso]').forEach(b=>b.onclick=()=>{verso=b.dataset.verso;sync()});
     el.querySelectorAll('[data-sub]').forEach(b=>b.onclick=()=>{sub=b.dataset.sub;sync()});
@@ -821,7 +847,7 @@ function sheetAdd(kind='uscita'){
       const desc=$('#a-desc').value.trim();
       if(verso==='prevista'){const ms_=prevMesi();if(!ms_.length){toast('"Fino a" deve venire dopo "Dal mese"');return}
         const importi=Array(12).fill(null);ms_.forEach(m=>importi[m-1]=r2(v));const g=parseInt($('#a-pg').value,10);const cat=$('#a-cat').value;
-        await put('previsioni/'+newId(),{anno:S.anno,categoria:cat,descrizione:desc||catName(cat),tipo:ptipo,giorno:ptipo!=='budget'&&g>=1&&g<=31?g:null,metodo:met,importi,effettivi:{}});
+        await put('previsioni/'+newId(),{anno:S.anno,categoria:cat,descrizione:desc||catName(cat),tipo:ptipo,giorno:ptipo!=='budget'&&g>=1&&g<=31?g:null,scadenza:ptipo!=='budget'&&$('#a-scad').getAttribute('aria-checked')==='true',metodo:met,importi,effettivi:{}});
         close();toast(`Prevista: ${desc||catName(cat)} ${eur(v)} · ${mesiLabel(importi)}`);return}const mese=+ms.value;const data=d.value||null;
       if(verso==='entrata'&&sub==='stipendio'){const m=+$('#a-sm').value,l=num($('#a-lordo').value);
         await put('stipendi/'+S.anno+'-'+pad(m),{anno:S.anno,mese:m,netto:r2(v),lordo:isNaN(l)?null:r2(l),stato:'confermato'});close();toast(`Inserito: stipendio ${nomeStip(m).toLowerCase()} ${eur(v)} netto (confermato)`);return}
@@ -881,6 +907,7 @@ function sheetPrev(id){
    <div class="field"><label for="p-cat">Categoria</label><select id="p-cat">${catOptions(p.categoria)}</select></div>
    <div class="field"><label>Tipo</label><div class="seg" role="group" aria-label="Tipo"><button type="button" data-tipo="certo">Certo</button><button type="button" data-tipo="variabile">Variabile</button><button type="button" data-tipo="budget">Budget</button></div><p class="note" id="p-tnote"></p></div>
    <div class="field"><label for="p-met">Metodo di pagamento</label><select id="p-met">${metOptions(p.metodo||'')}</select></div>
+   <div class="k-g"><div class="field k-scad"><button type="button" class="switch" id="p-scad" role="switch" aria-checked="${p.scadenza?'true':'false'}"><span class="sw-t"><strong>È una scadenza</strong><span class="small muted">Rata, bolletta, assicurazione: compare in "Prossime scadenze". La benzina o la spesa no.</span></span><span class="sw-k" aria-hidden="true"></span></button></div></div>
    <div class="field k-g"><label for="p-g">Giorno di addebito</label><input id="p-g" inputmode="numeric" value="${esc(p.giorno||'')}" placeholder="es. 5 (vuoto = fine mese)"></div>
    <div class="two"><div class="field"><label for="p-all">Importo da ripetere</label><input id="p-all" inputmode="decimal" placeholder="es. 380"></div><div class="field"><label for="p-from">Dal mese</label><select id="p-from">${meseOptions(1)}</select></div></div>
    <div class="two"><div class="field"><label for="p-n">Per quanti mesi</label><select id="p-n">${Array.from({length:12},(_,i)=>`<option value="${i+1}" ${i===11?'selected':''}>${i+1}</option>`).join('')}</select></div><div class="field"><label>&nbsp;</label><button class="pill-btn soft" type="button" id="p-fill" style="height:50px">Compila i mesi</button></div></div>
@@ -889,13 +916,14 @@ function sheetPrev(id){
    <div class="actions">${id?'<button class="pill-btn danger" type="button" id="p-del">Elimina</button>':''}<button class="pill-btn" type="submit">Salva</button></div></form>`,(el,close)=>{
     const $=q=>el.querySelector(q);let tipo=p.tipo||'certo';
     const TN={certo:'Diventa pagata da sola il giorno di addebito. Puoi correggerla dopo.',variabile:'Dal giorno di addebito resta "da confermare" finché non scrivi l\'importo vero.',budget:'Tetto mensile: le spese vere della categoria lo consumano. A mese chiuso conta solo il reale.'};
-    const sync=()=>{el.querySelectorAll('[data-tipo]').forEach(b=>b.setAttribute('aria-pressed',b.dataset.tipo===tipo));$('#p-tnote').textContent=TN[tipo];$('.k-g').hidden=tipo==='budget'};sync();
+    const sync=()=>{el.querySelectorAll('[data-tipo]').forEach(b=>b.setAttribute('aria-pressed',b.dataset.tipo===tipo));$('#p-tnote').textContent=TN[tipo];el.querySelectorAll('.k-g').forEach(x=>x.hidden=tipo==='budget')};sync();
     el.querySelectorAll('[data-tipo]').forEach(b=>b.onclick=()=>{tipo=b.dataset.tipo;sync()});
+    $('#p-scad').onclick=()=>$('#p-scad').setAttribute('aria-checked',$('#p-scad').getAttribute('aria-checked')!=='true');
     $('#p-fill').onclick=()=>{const v=num($('#p-all').value);if(isNaN(v)){toast('Scrivi l\'importo da ripetere');return}const from=+$('#p-from').value-1,n=+$('#p-n').value;for(let i=0;i<12;i++)$('#p-m'+i).value=(i>=from&&i<from+n)?inp(v):''};
     $('#f-p').onsubmit=async e=>{e.preventDefault();const imp=MB.map((_,i)=>{const t=$('#p-m'+i).value;const v=num(t);return t.trim()===''||isNaN(v)?null:r2(v)});
       if(!imp.some(v=>v!=null)){toast('Inserisci almeno un mese');return}
       const g=parseInt($('#p-g').value,10);const cat=$('#p-cat').value;
-      const nd={anno:p.anno,categoria:cat,descrizione:$('#p-desc').value.trim()||catName(cat),tipo,importi:imp,giorno:tipo!=='budget'&&g>=1&&g<=31?g:null,metodo:$('#p-met').value||null,effettivi:p.effettivi||{}};
+      const nd={anno:p.anno,categoria:cat,descrizione:$('#p-desc').value.trim()||catName(cat),tipo,importi:imp,giorno:tipo!=='budget'&&g>=1&&g<=31?g:null,scadenza:tipo!=='budget'&&$('#p-scad').getAttribute('aria-checked')==='true',metodo:$('#p-met').value||null,effettivi:p.effettivi||{}};
       await put('previsioni/'+(id||newId('previsioni')),nd);close();toast(`${id?'Aggiornata':'Inserita'}: ${nd.descrizione} · ${mesiLabel(imp)}`)};
     if(id)$('#p-del').onclick=async()=>{close();if(await confirmBox('Elimina previsione',`Eliminare "${esc(p.descrizione)}" da tutti i mesi del ${p.anno}, comprese le conferme già fatte?`,'Elimina',true)){await del('previsioni/'+id);toast('Previsione eliminata')}};
   });
@@ -980,6 +1008,7 @@ document.addEventListener('click',async e=>{
     case 'setmode':S.mode=k;saveMode();break;
     case 'kpi':S.kpi=k;render();break;
     case 'catall':S.catAll=!S.catAll;render();break;
+    case 'setmese':S.mese=+k;render();break;
     case 'dettcat':S.detCat=id;location.hash='#dettaglio';break;
     case 'dueall':S.dueAll=!S.dueAll;render();break;
     case 'regf':S.regF=k;render();break;
@@ -1187,11 +1216,11 @@ function rawToD(raw){
   const movimenti=(raw.movimenti||[]).filter(x=>x.id).map(x=>{const o={id:st(x.id),anno:nz(x.anno),mese:nz(x.mese),data:x.data?st(x.data):null,tipo:st(x.tipo),categoria:x.categoria?st(x.categoria):null,descrizione:st(x.descrizione),importo:nz(x.importo)||0,metodo:x.metodo?st(x.metodo):null};
     if(x.gruppo){o.gruppo=st(x.gruppo);o.quota=st(x.quota);o.totale=nz(x.totale)}return o});
   const previsioni=(raw.previsioni||[]).filter(x=>x.id).map(x=>{const eff={};MB_.forEach((m,i)=>{const v=nz(x['Eff '+m]);if(v!=null)eff[String(i+1)]=v});
-    return {id:st(x.id),anno:nz(x.anno),categoria:st(x.categoria),descrizione:st(x.descrizione),tipo:st(x.tipo)||'certo',giorno:nz(x.giorno),metodo:x.metodo?st(x.metodo):null,importi:MB_.map(m=>nz(x[m])),effettivi:eff}});
+    return {id:st(x.id),scadenza:x.scadenza===true||String(x.scadenza).toUpperCase()==='TRUE',anno:nz(x.anno),categoria:st(x.categoria),descrizione:st(x.descrizione),tipo:st(x.tipo)||'certo',giorno:nz(x.giorno),metodo:x.metodo?st(x.metodo):null,importi:MB_.map(m=>nz(x[m])),effettivi:eff}});
   const stipendi=(raw.stipendi||[]).filter(x=>x.id).map(x=>({id:st(x.id),anno:nz(x.anno),mese:nz(x.mese),netto:nz(x.netto),lordo:nz(x.lordo),stato:st(x.stato)||'confermato'}));
   return {config:{nome:'Michele Parente',categorie,metodi,riporti},movimenti,previsioni,stipendi};
 }
-function prevToRow(d){const r={anno:d.anno,categoria:d.categoria,descrizione:d.descrizione,tipo:d.tipo,giorno:d.giorno??null,metodo:d.metodo??null};
+function prevToRow(d){const r={anno:d.anno,categoria:d.categoria,descrizione:d.descrizione,tipo:d.tipo,giorno:d.giorno??null,metodo:d.metodo??null,scadenza:!!d.scadenza};
   MB_.forEach((m,i)=>{r[m]=d.importi?d.importi[i]:null;const e=d.effettivi&&d.effettivi[String(i+1)];r['Eff '+m]=e==null?null:e});return r}
 function movToRow(d){return {anno:d.anno,mese:d.mese,data:d.data||null,tipo:d.tipo,categoria:d.categoria||null,descrizione:d.descrizione||'',importo:d.importo,metodo:d.metodo||null,gruppo:d.gruppo||null,quota:d.quota||null,totale:d.totale??null}}
 function configOps(c){return [
