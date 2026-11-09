@@ -277,7 +277,7 @@ function istanze(D,anno,oggi){
   });
   return out;
 }
-// Netti 1..12, 13 (13ª, luglio), 14 (14ª, dicembre): reali o simulati dall'anno precedente
+// Netti 1..12, 13 (13ª, Dicembre), 14 (14ª, Luglio): reali o simulati dall'anno precedente
 function nettiAnno(D,anno){
   const res={};
   for(let m=1;m<=14;m++){
@@ -386,7 +386,7 @@ function buildWorkbook(ExcelJS,D,anno,oggi,nome){
     rows.push({data:x.data?new Date(x.data+'T12:00:00'):null,m:x.mese,mov:x.tipo==='spesa'?'Uscita':'Entrata',tipo,cat:catNome(x.categoria),desc:x.descrizione||'',met:x.metodo||'',u:x.tipo==='spesa'?+x.importo:null,e:x.tipo==='spesa'?null:+x.importo,stato:'Effettivo',quota:x.quota?x.quota+' di '+(+x.totale||0).toLocaleString('it-IT',{minimumFractionDigits:2})+' €':''});
   });
   y.ist.forEach(i=>rows.push({data:dataAddebito(anno,i.m,i.p.giorno||28),m:i.m,mov:'Uscita',tipo:'Prevista ('+(i.p.tipo==='certo'?'certa':'variabile')+')',cat:catNome(i.p.categoria),desc:i.p.descrizione,met:i.p.metodo||'',u:i.importo,e:null,stato:i.stato==='effettivo'?(i.auto?'Pagata (automatica)':'Pagata'):i.stato==='daconfermare'?'Da confermare':'Prevista',quota:''}));
-  Object.entries(y.netti).forEach(([mm,n])=>{if(n.stato!=='confermato')return;mm=+mm;const m=mm<=12?mm:mm===13?7:12;rows.push({data:null,m,mov:'Entrata',tipo:'Stipendio',cat:'',desc:'Stipendio '+(mm<=12?MES[mm-1].toLowerCase():mm===13?'13ª':'14ª'),met:'',u:null,e:n.netto,stato:'Effettivo',quota:''})});
+  Object.entries(y.netti).forEach(([mm,n])=>{if(n.stato!=='confermato')return;mm=+mm;const m=mm<=12?mm:mm===13?12:7;rows.push({data:null,m,mov:'Entrata',tipo:'Stipendio',cat:'',desc:'Stipendio '+(mm<=12?MES[mm-1]:mm===13?'13ª':'14ª'),met:'',u:null,e:n.netto,stato:'Effettivo',quota:''})});
   rows.sort((a,b)=>a.m-b.m||((a.data?a.data.getTime():9e15)-(b.data?b.data.getTime():9e15)));
   wr.columns=[{header:'Data',key:'data',width:12},{header:'Mese addebito',key:'mese',width:14},{header:'Movimento',key:'mov',width:11},{header:'Tipo',key:'tipo',width:20},{header:'Categoria',key:'cat',width:24},{header:'Descrizione',key:'desc',width:38},{header:'Metodo',key:'met',width:15},{header:'Uscita',key:'u',width:13},{header:'Entrata',key:'e',width:13},{header:'Stato',key:'stato',width:19},{header:'Ripartizione',key:'quota',width:20}];
   head(wr.getRow(1));
@@ -408,7 +408,7 @@ function buildWorkbook(ExcelJS,D,anno,oggi,nome){
   wt.mergeCells('A1:H1');wt.getCell('A1').value='Stipendi '+anno+' (confronto con '+(anno-1)+')';wt.getCell('A1').font=font({size:16,bold:true});
   const h=wt.getRow(3);h.values=['Mese','Netto '+anno,'Lordo '+anno,'Stato','Netto '+(anno-1),'Lordo '+(anno-1),'Δ netto','Δ lordo'];head(h,'FF0A7A4E');
   for(let m=1;m<=14;m++){const rr=3+m;const a=y.netti[m],p=np[m];const row=wt.getRow(rr);
-    row.values=[m<=12?MES[m-1]:m===13?'13ª (luglio)':'14ª (dicembre)',a?a.netto:null,a&&a.lordo!=null?a.lordo:null,a?(a.stato==='confermato'?'Confermato':'Simulato'):'',p?p.netto:null,p&&p.lordo!=null?p.lordo:null];
+    row.values=[m<=12?MES[m-1]:m===13?'13ª (Dicembre)':'14ª (Luglio)',a?a.netto:null,a&&a.lordo!=null?a.lordo:null,a?(a.stato==='confermato'?'Confermato':'Simulato'):'',p?p.netto:null,p&&p.lordo!=null?p.lordo:null];
     row.getCell(7).value={formula:`IF(AND(ISNUMBER(B${rr}),ISNUMBER(E${rr})),B${rr}-E${rr},"")`};row.getCell(8).value={formula:`IF(AND(ISNUMBER(C${rr}),ISNUMBER(F${rr})),C${rr}-F${rr},"")`};
     [2,3,5,6,7,8].forEach(k=>row.getCell(k).numFmt=EUR);
     if(a&&a.stato!=='confermato')[2,3,4].forEach(k=>row.getCell(k).font=font({italic:true,color:{argb:SUB}}));
@@ -437,9 +437,9 @@ const num=s=>{if(s==null)return NaN;const t=String(s).trim().replace(/\s|€/g,'
 const pad=n=>String(n).padStart(2,'0');
 const today=()=>new Date();
 const isoToday=()=>{const d=today();return d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate())};
-const fmtDate=d=>{if(!d)return '';const [y,m,g]=d.split('-');return +g+' '+MB[+m-1].toLowerCase()+(+y!==S.anno?' '+y:'')};
+const fmtDate=d=>{if(!d)return '';const [y,m,g]=d.split('-');return +g+' '+MB[+m-1]+(+y!==S.anno?' '+y:'')};
 const nomeStip=m=>m<=12?MESI[m-1]:m===13?'13ª':'14ª';
-const meseStip=m=>m<=12?m:m===13?7:12;
+const meseStip=m=>m<=12?m:m===13?12:7;
 const ICON={
   prev:'<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 6l-6 6 6 6"/></svg>',
   next:'<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg>',
@@ -530,16 +530,16 @@ function panoramicaCard(y,m,mi){
   const tiles=S.kpi==='mese'?[
     {l:'Disponibilità',v:eur(m.disp),n:m.spot?`Standard + ${eur(m.spot)} spot`:(S.mese===1&&y.riporto?'Standard + riporto':'Stipendio standard'),hero:true},
     {l:'Spese del mese',v:eur(m.spese),n:st==='chiuso'?'Effettive':'Effettive + previste'},
-    {l:'Avanzo cumulato',v:sgn(m.avanzo),n:`Gen – ${MB[mi].toLowerCase()}`,c:m.avanzo<0?'neg':'pos'},
+    {l:'Avanzo cumulato',v:sgn(m.avanzo),n:`Gen – ${MB[mi]}`,c:m.avanzo<0?'neg':'pos'},
     {l:'Fine anno',v:sgn(fine),n:'Previsione',c:fine<0?'neg':'pos'}
   ]:[
     {l:'Entrate anno',v:eur(y.mesi.reduce((a,x)=>a+x.disp,0)),n:'Netti + spot + riporto',hero:true},
     {l:'Spese anno',v:eur(y.mesi.reduce((a,x)=>a+x.spese,0)),n:'Effettive + previste'},
-    {l:'Avanzo a oggi',v:lastClosed?sgn(lastClosed.avanzo):'—',n:lastClosed?`Gen – ${MB[lastClosed.m-1].toLowerCase()}`:'Nessun mese chiuso',c:lastClosed&&lastClosed.avanzo<0?'neg':'pos'},
+    {l:'Avanzo a oggi',v:lastClosed?sgn(lastClosed.avanzo):'—',n:lastClosed?`Gen – ${MB[lastClosed.m-1]}`:'Nessun mese chiuso',c:lastClosed&&lastClosed.avanzo<0?'neg':'pos'},
     {l:'Fine anno',v:sgn(fine),n:'Previsione',c:fine<0?'neg':'pos'}
   ];
   const n=y.netti[S.mese],np=nettiAnno(S.D,S.anno-1)[S.mese];
-  const netRow=n?`<a class="netrow" href="#entrate" style="color:inherit;text-decoration:none"><div style="min-width:0"><div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap"><strong>Netto ${MESI[mi].toLowerCase()}</strong><span class="chip ${n.stato==='confermato'?'ok':'sim'}">${n.stato==='confermato'?'CONFERMATO':'SIMULATO'}</span></div><span class="small muted num">${eur(n.netto)} · standard ${eur(y.std)}${np?` · a.p. ${sgn(r2(n.netto-np.netto))}`:''}</span></div><strong class="num ${n.netto-y.std<0?'neg':'pos'}" style="white-space:nowrap">${sgn(r2(n.netto-y.std))}</strong></a>`:`<a class="netrow" href="#entrate" style="color:inherit;text-decoration:none"><span class="small muted">Nessun netto per ${MESI[mi].toLowerCase()}: tocca per registrarlo.</span></a>`;
+  const netRow=n?`<a class="netrow" href="#entrate" style="color:inherit;text-decoration:none"><div style="min-width:0"><div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap"><strong>Netto ${MESI[mi]}</strong><span class="chip ${n.stato==='confermato'?'ok':'sim'}">${n.stato==='confermato'?'CONFERMATO':'SIMULATO'}</span></div><span class="small muted num">${eur(n.netto)} · standard ${eur(y.std)}${np?` · a.p. ${sgn(r2(n.netto-np.netto))}`:''}</span></div><strong class="num ${n.netto-y.std<0?'neg':'pos'}" style="white-space:nowrap">${sgn(r2(n.netto-y.std))}</strong></a>`:`<a class="netrow" href="#entrate" style="color:inherit;text-decoration:none"><span class="small muted">Nessun netto per ${MESI[mi]}: tocca per registrarlo.</span></a>`;
   return `<section class="card pano-card" aria-label="Panoramica"><div class="seg" role="group" aria-label="Periodo"><button data-act="kpi" data-k="mese" aria-pressed="${S.kpi==='mese'}">${MESI[mi]}</button><button data-act="kpi" data-k="anno" aria-pressed="${S.kpi==='anno'}">Anno ${S.anno}</button></div><div class="tiles">${tiles.map(t=>`<div class="tile ${t.hero?'hero':''}"><span class="t-l">${t.l}</span><span class="t-v num ${t.c||''}">${t.v}</span><span class="t-n">${t.n}</span></div>`).join('')}</div>${netRow}</section>`;
 }
 function vHome(){
@@ -578,14 +578,14 @@ function vDashboard(){
     const varReale=r2(S.D.movimenti.filter(x=>x.anno===S.anno&&x.mese===S.mese&&varIds.has(x.categoria)).reduce((a,x)=>a+(x.tipo==='reso'?-1:x.tipo==='spesa'?1:0)*(+x.importo),0));
     const ritmoG=g>0?varReale/g:0,stimaVar=r2(ritmoG*dim);
     const extra=Math.max(0,r2(stimaVar-m.variabili));const fine=r2(m.saldo-extra);
-    proj=`<section class="card" aria-label="Fine mese"><div class="row-head"><h2>Come chiudi ${MESI[mi].toLowerCase()}</h2><span class="small muted">giorno ${g} di ${dim}</span></div>
+    proj=`<section class="card" aria-label="Fine mese"><div class="row-head"><h2>Come chiudi ${MESI[mi]}</h2><span class="small muted">giorno ${g} di ${dim}</span></div>
      <div class="tiles"><div class="tile ${fine<0?'':'hero'}" style="${fine<0?'background:var(--warn-bg);color:var(--warn-ink)':''}"><span class="t-l">Se continui così</span><span class="t-v num">${sgn(fine)}</span><span class="t-n">saldo a fine mese</span></div><div class="tile"><span class="t-l">Puoi spendere</span><span class="t-v num">${m.saldo>0?eur(r2(m.saldo/left)):'0,00 €'}</span><span class="t-n">al giorno per ${left} giorni</span></div></div>
      <p class="note">Spese variabili finora ${eur(varReale)}, cioè ${eur(r2(ritmoG))} al giorno: a questo ritmo arrivi a circa ${eur(stimaVar)} entro fine mese${extra>0?`, ${eur(extra)} oltre il previsto`:', dentro il previsto'}.</p></section>`}
   // prossime scadenze
   const ps=prossimeScadenze();const t0=today();t0.setHours(0,0,0,0);
   const fra=d=>{const n=Math.round((d-t0)/864e5);return n<0?`scaduta da ${-n} ${-n===1?'giorno':'giorni'}`:n===0?'oggi':n===1?'domani':`tra ${n} giorni`};
   const psTot=r2(ps.reduce((a,x)=>a+x.i.importo,0));
-  const scad=`<section class="card tight" aria-label="Prossime scadenze"><div class="row-head" style="padding-top:12px"><h2>Prossime scadenze</h2><a class="link" href="#previsioni" style="text-decoration:none;display:inline-flex;align-items:center">Gestisci</a></div><div class="list">${ps.slice(0,S.dueAll?99:5).map(x=>`<button class="item" data-act="editist" data-id="${esc(x.i.p.id)}" data-k="${x.i.m}"><span class="badge">${x.d.getDate()}<br>${MB[x.d.getMonth()].toLowerCase()}</span><span class="grow"><span class="t">${esc(x.i.p.descrizione)}</span><span class="s">${fra(x.d)}${x.i.p.metodo?' · '+esc(x.i.p.metodo):''} ${x.i.stato==='daconfermare'?statoChip('daconfermare'):''}</span></span><span class="amt">−${eur(x.i.importo)}</span></button>`).join('')||'<p class="empty">Nessuna scadenza nei prossimi 30 giorni. Segna come "scadenza" rate, bollette e assicurazioni nelle previsioni.</p>'}</div>${ps.length?`<p class="note" style="padding-bottom:12px">${ps.length} nei prossimi 30 giorni · totale ${eur(psTot)}${ps.length>5?` · <button class="link" data-act="dueall" style="padding:0;min-height:0">${S.dueAll?'mostra meno':'mostra tutte'}</button>`:''}</p>`:''}</section>`;
+  const scad=`<section class="card tight" aria-label="Prossime scadenze"><div class="row-head" style="padding-top:12px"><h2>Prossime scadenze</h2><a class="link" href="#previsioni" style="text-decoration:none;display:inline-flex;align-items:center">Gestisci</a></div><div class="list">${ps.slice(0,S.dueAll?99:5).map(x=>`<button class="item" data-act="editist" data-id="${esc(x.i.p.id)}" data-k="${x.i.m}"><span class="badge">${x.d.getDate()}<br>${MB[x.d.getMonth()]}</span><span class="grow"><span class="t">${esc(x.i.p.descrizione)}</span><span class="s">${fra(x.d)}${x.i.p.metodo?' · '+esc(x.i.p.metodo):''} ${x.i.stato==='daconfermare'?statoChip('daconfermare'):''}</span></span><span class="amt">−${eur(x.i.importo)}</span></button>`).join('')||'<p class="empty">Nessuna scadenza nei prossimi 30 giorni. Segna come "scadenza" rate, bollette e assicurazioni nelle previsioni.</p>'}</div>${ps.length?`<p class="note" style="padding-bottom:12px">${ps.length} nei prossimi 30 giorni · totale ${eur(psTot)}${ps.length>5?` · <button class="link" data-act="dueall" style="padding:0;min-height:0">${S.dueAll?'mostra meno':'mostra tutte'}</button>`:''}</p>`:''}</section>`;
   // dove vanno i soldi
   const list=y.cat.map(c=>({c,v:c.mesi[mi],a:media(c,S.anno)})).filter(x=>x.v>0.004).sort((a,b)=>b.v-a.v);
   const shown=S.catAll?list:list.slice(0,5);
@@ -594,7 +594,7 @@ function vDashboard(){
   const yp=Y(S.anno-1);const prevM=mi>0?y.mesi[mi-1]:yp.mesi[11];const sameLY=yp.mesi[mi];
   const chiusi=y.mesi.filter(x=>x.stato==='chiuso');const medS=chiusi.length?r2(chiusi.reduce((a,x)=>a+x.spese,0)/chiusi.length):null;
   const cr=(l,ref)=>{if(ref==null||!(ref>0))return `<span>${l}</span><span class="muted">—</span><span></span>`;const d=r2(m.spese-ref),p=Math.round(d/ref*100);return `<span>${l}</span><span class="num muted">${eur(ref)}</span><strong class="num ${d>0?'neg':'pos'}">${d>0?'+':''}${p}%</strong>`};
-  const conf=`<section class="card" aria-label="Confronti"><h2>Spese di ${MESI[mi].toLowerCase()} a confronto</h2><div class="cmp"><span class="h">Rispetto a</span><span class="h">Spese</span><span class="h">Diff.</span>${cr('Mese prima',prevM.spese)}${cr(MESI[mi]+' '+(S.anno-1),sameLY.spese)}${cr('Media mesi chiusi',medS)}</div></section>`;
+  const conf=`<section class="card" aria-label="Confronti"><h2>Spese di ${MESI[mi]} a confronto</h2><div class="cmp"><span class="h">Rispetto a</span><span class="h">Spese</span><span class="h">Diff.</span>${cr('Mese prima',prevM.spese)}${cr(MESI[mi]+' '+(S.anno-1),sameLY.spese)}${cr('Media mesi chiusi',medS)}</div></section>`;
   // previsionale
   const nx=S.anno+1;let nextCard;
   if(haDati(nx)){const yn=Y(nx);nextCard=`<section class="card"><div class="row-head"><div><p class="eyebrow">Previsionale ${nx}</p><span class="num ${yn.mesi[11].avanzo<0?'neg':'pos'}" style="font-size:22px;font-weight:800">${sgn(yn.mesi[11].avanzo)}</span><p class="note">Avanzo stimato a fine ${nx} · spese ${eur(yn.mesi.reduce((a,x)=>a+x.spese,0))}</p></div><button class="pill-btn soft" data-act="anno" data-k="${nx}">Apri</button></div></section>`}
@@ -614,7 +614,7 @@ function vDettaglio(){
   return `<div class="hd"><div style="min-width:0"><a class="eyebrow" href="#dashboard" style="text-decoration:none;color:var(--accent-ink)">‹ Dashboard</a><h1 style="font-size:24px;font-weight:800;letter-spacing:-.4px">${esc(c.nome)}</h1></div></div>
   <section class="card"><div class="tiles"><div class="tile hero"><span class="t-l">${MESI[S.mese-1]}</span><span class="t-v num">${eur(cur)}</span><span class="t-n">${med?((cur>med?'+':'')+Math.round((cur-med)/med*100)+'% sulla media'):'—'}</span></div><div class="tile"><span class="t-l">Totale ${S.anno}</span><span class="t-v num">${eur(tot)}</span><span class="t-n">Media ${eur(med)}/mese</span></div></div>
   <svg viewBox="0 0 ${W} ${H}" width="100%" role="img" aria-label="Spesa mese per mese in ${esc(c.nome)}">${bars}<line x1="4" x2="${W-4}" y1="${my}" y2="${my}" stroke="var(--neg)" stroke-width="1.5" stroke-dasharray="4 4"/>${[0,3,6,9,11].map(i=>`<text x="${(8+i*(W-16)/12+9).toFixed(1)}" y="${H-3}" font-size="10" fill="var(--sub)" text-anchor="middle">${MB[i]}</text>`).join('')}</svg><p class="note">Barre chiare: mesi futuri (previsione). Tratteggio: media.</p></section>
-  <p class="sec-title">Movimenti di ${MESI[S.mese-1].toLowerCase()}</p><section class="card tight"><div class="list">${rows.map(r=>r.k==='ist'?istRow(r.i):`<button class="item" data-act="editmov" data-id="${esc(r.x.id)}"><span class="grow"><span class="t">${esc(r.x.descrizione)}</span><span class="s">${r.x.tipo==='reso'?'Storno / reso · ':''}${fmtDate(r.x.data)}${r.x.metodo?' · '+esc(r.x.metodo):''}${r.x.quota?' · quota '+esc(r.x.quota):''}</span></span><span class="amt ${r.entrata?'pos':''}">${r.entrata?'+':'−'}${eur(r.importo)}</span></button>`).join('')||'<p class="empty">Nessun movimento in questo mese.</p>'}</div></section>
+  <p class="sec-title">Movimenti di ${MESI[S.mese-1]}</p><section class="card tight"><div class="list">${rows.map(r=>r.k==='ist'?istRow(r.i):`<button class="item" data-act="editmov" data-id="${esc(r.x.id)}"><span class="grow"><span class="t">${esc(r.x.descrizione)}</span><span class="s">${r.x.tipo==='reso'?'Storno / reso · ':''}${fmtDate(r.x.data)}${r.x.metodo?' · '+esc(r.x.metodo):''}${r.x.quota?' · quota '+esc(r.x.quota):''}</span></span><span class="amt ${r.entrata?'pos':''}">${r.entrata?'+':'−'}${eur(r.importo)}</span></button>`).join('')||'<p class="empty">Nessun movimento in questo mese.</p>'}</div></section>
   ${prv.length?`<p class="sec-title">Previsioni</p><section class="card tight"><div class="list">${prv.map(p=>`<button class="item" data-act="editprev" data-id="${esc(p.id)}"><span class="grow"><span class="t">${esc(p.descrizione)}</span><span class="s">${TIPI[p.tipo]} · ${mesiLabel(p.importi)}</span></span>${ICON.chev}</button>`).join('')}</div></section>`:''}`;
 }
 function splitBar(m){const fp=m.spese>0?Math.max(0,Math.min(1,m.fisse/m.spese)):0;return `<div class="split" aria-hidden="true"><span style="width:${(fp*100).toFixed(1)}%;background:var(--fixed)"></span><span style="flex:1;background:var(--var)"></span></div><div class="legend"><span><span class="dot" style="background:var(--fixed)"></span><strong>Fisse</strong> <span class="muted num">${eur(m.fisse)} · ${Math.round(fp*100)}%</span></span><span><span class="dot" style="background:var(--var)"></span><strong>Variabili</strong> <span class="muted num">${eur(m.variabili)} · ${Math.round((1-fp)*100)}%</span></span></div>`}
@@ -634,7 +634,7 @@ function avanzoChart(y){
   const labels=[0,3,6,9,11].map(i=>`<text x="${X(i).toFixed(1)}" y="${H-6}" font-size="11" fill="var(--sub)" text-anchor="${i===0?'start':i===11?'end':'middle'}">${MB[i]}</text>`).join('');
   const yl=(mx>0?`<text x="${pl}" y="${(Yv(mx)-5).toFixed(1)}" font-size="10" fill="var(--sub)">${n2(mx)}</text>`:'')+(mn<0?`<text x="${pl}" y="${(Yv(mn)+12).toFixed(1)}" font-size="10" fill="var(--sub)">${n2(mn)}</text>`:'');
   const a=y.mesi[S.mese-1].avanzo,f=y.mesi[11].avanzo;
-  return `<section class="card" aria-label="Avanzo cumulato"><div class="row-head"><div><p class="eyebrow">Avanzo cumulato a ${MESI[S.mese-1].toLowerCase()}</p><span class="num ${a<0?'neg':'pos'}" style="font-size:24px;font-weight:800">${sgn(a)}</span></div><div style="text-align:right"><p class="eyebrow">Fine anno</p><span class="num ${f<0?'neg':'pos'}" style="font-size:17px;font-weight:800">${sgn(f)}</span></div></div><svg viewBox="0 0 ${W} ${H}" width="100%" role="img" aria-label="Avanzo cumulato da gennaio a dicembre: tratto pieno i mesi chiusi, tratteggio la previsione">${grid}${area?`<path d="${area}" fill="var(--accent)" opacity=".12"/>`:''}${real.length>1?`<polyline points="${line(real)}" fill="none" stroke="var(--accent)" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/>`:''}${est.length>1?`<polyline points="${line(est)}" fill="none" stroke="var(--accent)" stroke-width="3" stroke-dasharray="4 6" stroke-linecap="round"/>`:''}<circle cx="${last[0].toFixed(1)}" cy="${last[1].toFixed(1)}" r="4" fill="var(--card)" stroke="var(--accent)" stroke-width="2.5"/><circle cx="${sel[0].toFixed(1)}" cy="${sel[1].toFixed(1)}" r="5.5" fill="var(--accent)"/>${yl}${labels}</svg><p class="note">Tratto pieno: mesi chiusi. Tratteggio: previsione.</p></section>`;
+  return `<section class="card" aria-label="Avanzo cumulato"><div class="row-head"><div><p class="eyebrow">Avanzo cumulato a ${MESI[S.mese-1]}</p><span class="num ${a<0?'neg':'pos'}" style="font-size:24px;font-weight:800">${sgn(a)}</span></div><div style="text-align:right"><p class="eyebrow">Fine anno</p><span class="num ${f<0?'neg':'pos'}" style="font-size:17px;font-weight:800">${sgn(f)}</span></div></div><svg viewBox="0 0 ${W} ${H}" width="100%" role="img" aria-label="Avanzo cumulato da Gennaio a Dicembre: tratto pieno i mesi chiusi, tratteggio la previsione">${grid}${area?`<path d="${area}" fill="var(--accent)" opacity=".12"/>`:''}${real.length>1?`<polyline points="${line(real)}" fill="none" stroke="var(--accent)" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/>`:''}${est.length>1?`<polyline points="${line(est)}" fill="none" stroke="var(--accent)" stroke-width="3" stroke-dasharray="4 6" stroke-linecap="round"/>`:''}<circle cx="${last[0].toFixed(1)}" cy="${last[1].toFixed(1)}" r="4" fill="var(--card)" stroke="var(--accent)" stroke-width="2.5"/><circle cx="${sel[0].toFixed(1)}" cy="${sel[1].toFixed(1)}" r="5.5" fill="var(--accent)"/>${yl}${labels}</svg><p class="note">Tratto pieno: mesi chiusi. Tratteggio: previsione.</p></section>`;
 }
 
 // ---------- REGISTRO ----------
@@ -642,7 +642,7 @@ function righeMese(anno,m){
   const y=Y(anno);const rows=[];
   S.D.movimenti.filter(x=>x.anno===anno&&x.mese===m).forEach(x=>rows.push({k:'mov',x,data:x.data||'',entrata:x.tipo!=='spesa',importo:+x.importo,cat:x.categoria||null,met:x.metodo||'',stato:'effettivo'}));
   y.ist.filter(i=>i.m===m).forEach(i=>rows.push({k:'ist',i,data:anno+'-'+pad(m)+'-'+pad(i.p.giorno||28),entrata:false,importo:i.importo,cat:i.p.categoria,met:i.p.metodo||'',stato:i.stato}));
-  Object.entries(y.netti).forEach(([mm,n])=>{if(meseStip(+mm)===m&&n.stato==='confermato')rows.push({k:'stip',mm:+mm,n,data:anno+'-'+pad(m)+'-27',entrata:true,importo:n.netto,cat:null,stato:'effettivo'})});
+  Object.entries(y.netti).forEach(([mm,n])=>{if(meseStip(+mm)===m)rows.push({k:'stip',mm:+mm,n,data:anno+'-'+pad(m)+'-27',entrata:true,importo:n.netto,cat:null,stato:n.stato==='confermato'?'effettivo':'previsto'})});
   return rows;
 }
 function vRegistro(){
@@ -656,7 +656,7 @@ function vRegistro(){
   const all=righeMese(S.anno,S.mese);
   const usc=r2(all.filter(r=>!r.entrata&&r.stato==='effettivo').reduce((a,r)=>a+r.importo,0));
   const ent=r2(all.filter(r=>r.entrata&&r.k!=='stip').reduce((a,r)=>a+r.importo,0));
-  const pre=r2(all.filter(r=>r.stato!=='effettivo').reduce((a,r)=>a+r.importo,0));
+  const pre=r2(all.filter(r=>r.stato!=='effettivo'&&r.k!=='stip').reduce((a,r)=>a+r.importo,0));
   const nDc=all.filter(r=>r.stato==='daconfermare').length;
   const fl=[['tutti','Tutti'],['uscite','Uscite'],['entrate','Entrate'],['previsti','Previsti'],['daconf','Da confermare'+(nDc?` (${nDc})`:'')]];
   const chips=`<div class="chips" role="group" aria-label="Filtro">${fl.map(([k,l])=>`<button data-act="regf" data-k="${k}" aria-pressed="${F===k}">${l}</button>`).join('')}</div><div class="two"><div class="field"><label for="reg-cat" class="sr">Categoria</label><select id="reg-cat" data-change="regcat"><option value="tutte">Tutte le categorie</option>${catsAnno().map(c=>`<option value="${esc(c.id)}" ${S.regCat===c.id?'selected':''}>${esc(c.nome)}</option>`).join('')}</select></div><div class="field"><label for="reg-met" class="sr">Metodo di pagamento</label><select id="reg-met" data-change="regmet"><option value="tutti">Tutti i metodi</option>${metodi().map(m=>`<option value="${esc(m)}" ${S.regMet===m?'selected':''}>${esc(m)}</option>`).join('')}</select></div></div>`;
@@ -665,7 +665,7 @@ function vRegistro(){
   const budRows=bud.map(p=>{const c=yc.cat.find(x=>x.id===p.categoria);const usato=c?c.reale[S.mese-1]:0;const b=+p.importi[S.mese-1];const pc=Math.min(100,b?usato/b*100:0);return `<button class="item" data-act="editprev" data-id="${esc(p.id)}"><span class="grow"><span class="t">${esc(p.descrizione)} · budget</span><span class="s num">Usati ${eur(usato)} su ${eur(b)}</span><span class="bar" style="margin-top:4px"><i style="width:${pc.toFixed(1)}%;background:${usato>b?'var(--neg)':'var(--accent)'}"></i></span></span><span class="amt">${eur(Math.max(0,r2(b-usato)))}<span class="s" style="display:block;font-weight:500">restano</span></span></button>`}).join('');
   const rowHtml=r=>{
     if(r.k==='ist')return istRow(r.i);
-    if(r.k==='stip')return `<button class="item" data-act="editstip" data-k="${r.mm}"><span class="badge in">€</span><span class="grow"><span class="t">Stipendio ${nomeStip(r.mm).toLowerCase()}</span><span class="s">Entrata · netto confermato</span></span><span class="amt pos">+${eur(r.importo)}</span></button>`;
+    if(r.k==='stip'){const sim=r.n.stato!=='confermato';return `<button class="item ${sim?'is-prev':''}" data-act="editstip" data-k="${r.mm}"><span class="badge in">€</span><span class="grow"><span class="t">Stipendio ${nomeStip(r.mm)}</span><span class="s">Entrata · ${sim?'stima dall\'anno prima <span class="chip sim">SIMULATO</span>':'netto confermato'}</span></span><span class="amt pos">+${eur(r.importo)}</span></button>`}
     const x=r.x;const tl=x.tipo==='spot'?'Entrata spot':x.tipo==='reso'?'Storno / reso · '+esc(catName(x.categoria)):esc(catName(x.categoria));
     return `<button class="item" data-act="editmov" data-id="${esc(x.id)}"><span class="badge ${r.entrata?'in':''}">${r.entrata?'+':esc(initials(catName(x.categoria)))}</span><span class="grow"><span class="t">${esc(x.descrizione||catName(x.categoria))}</span><span class="s">${tl}${x.data?' · '+fmtDate(x.data):''}${x.metodo?' · '+esc(x.metodo):''}${x.quota?' · quota '+esc(x.quota):''}</span></span><span class="amt ${r.entrata?'pos':''}">${r.entrata?'+':'−'}${eur(r.importo)}${x.gruppo?`<span class="s" style="display:block;font-weight:500">di ${eur(+x.totale||0)}</span>`:''}</span></button>`};
   return header('Registro')+chips+`<a class="banner" href="#previsioni" style="background:var(--chip);color:var(--accent-ink);text-decoration:none"><span><strong>Spese previste e ricorrenti</strong> · affitto, rate, abbonamenti, budget</span>${ICON.chev}</a><div class="sum-line"><span>Uscite <strong class="num">${eur(usc)}</strong></span><span>Entrate <strong class="num pos">${eur(ent)}</strong></span><span class="muted">Ancora previste <strong class="num">${eur(pre)}</strong></span></div>`+
@@ -691,7 +691,7 @@ function vEntrate(){
    `<div class="actions"><button class="pill-btn" data-act="add" data-k="stipendio">+ Stipendio</button><button class="pill-btn soft" data-act="add" data-k="spot">+ Entrata spot</button></div>`+
    `<section class="card"><div class="tiles"><div class="tile hero"><span class="t-l">Stipendio standard</span><span class="t-v num">${eur(y.std)}</span><span class="t-n">(12 netti + 13ª + 14ª) / 12</span></div><div class="tile"><span class="t-l">Netti anno</span><span class="t-v num">${eur(y.totNetti)}</span><span class="t-n num">${pt?'a.p. '+sgn(r2(y.totNetti-pt)):(tl?'Lordo '+eur(tl):'')}</span></div></div><p class="note">I mesi senza netto registrato usano quello dell'anno prima, come simulazione (SIM). Quando registri lo stipendio diventa confermato (OK) e lo standard si ricalcola.</p></section>`+
    (rows.length?`<div class="table-box"><table><thead><tr><th>Mese</th><th>Netto</th><th>Lordo</th><th>Δ netto a.p.</th><th>Δ lordo a.p.</th><th>Stato</th></tr></thead><tbody>${rows.join('')}<tr class="tot"><td>Totale</td><td>${n2(y.totNetti)}</td><td>${tl?n2(tl):'–'}</td><td>${pt?n2(r2(y.totNetti-pt)):'–'}</td><td></td><td></td></tr></tbody></table></div>`:'<p class="empty">Nessuno stipendio registrato per il '+S.anno+' né per l\'anno prima.</p>')+
-   `<p class="sec-title">Entrate spot</p><section class="card tight"><div class="list"><button class="item" data-act="editriporto"><span class="badge in">A.P.</span><span class="grow"><span class="t">Riporto dall'anno precedente</span><span class="s">Conta solo a gennaio</span></span><span class="amt ${rip<0?'neg':''}">${eur(rip)}</span></button>${spot.map(li).join('')}</div></section>`+
+   `<p class="sec-title">Entrate spot</p><section class="card tight"><div class="list"><button class="item" data-act="editriporto"><span class="badge in">A.P.</span><span class="grow"><span class="t">Riporto dall'anno precedente</span><span class="s">Conta solo a Gennaio</span></span><span class="amt ${rip<0?'neg':''}">${eur(rip)}</span></button>${spot.map(li).join('')}</div></section>`+
    `<p class="sec-title">Storni e resi</p><section class="card tight"><div class="list">${resi.map(li).join('')||'<p class="empty">Nessuno storno o reso. Riducono la spesa della loro categoria.</p>'}</div></section>`;
 }
 
@@ -719,7 +719,7 @@ function vProspetto(){
 
 // ---------- PREVISIONI / CATEGORIE ----------
 const TIPI={certo:'Importo certo',variabile:'Importo variabile',budget:'Budget'};
-function mesiLabel(imp){const on=imp.map((v,i)=>v!=null?i:-1).filter(i=>i>=0);if(!on.length)return 'nessun mese';if(on.length===12)return 'tutti i mesi';const runs=[];let s=on[0],p=on[0];for(const i of on.slice(1)){if(i===p+1){p=i;continue}runs.push([s,p]);s=p=i}runs.push([s,p]);return runs.map(([a,b])=>a===b?MB[a].toLowerCase():MB[a].toLowerCase()+'–'+MB[b].toLowerCase()).join(', ')}
+function mesiLabel(imp){const on=imp.map((v,i)=>v!=null?i:-1).filter(i=>i>=0);if(!on.length)return 'nessun mese';if(on.length===12)return 'tutti i mesi';const runs=[];let s=on[0],p=on[0];for(const i of on.slice(1)){if(i===p+1){p=i;continue}runs.push([s,p]);s=p=i}runs.push([s,p]);return runs.map(([a,b])=>a===b?MB[a]:MB[a]+'–'+MB[b]).join(', ')}
 function vPrevisioni(){
   const pv=S.D.previsioni.filter(p=>p.anno===S.anno);
   const groups=cats().map(c=>({c,items:pv.filter(p=>p.categoria===c.id)})).filter(g=>g.items.length);
@@ -750,8 +750,8 @@ function vSimula(){
   const cmp=(l,x,y)=>`<span>${l}</span><span class="num muted">${sgn(x)}</span><span class="num ${y<0?'neg':'pos'}"><strong>${sgn(y)}</strong></span>`;
   const changed=a.mesi.map((m,i)=>({m:i+1,a:m.saldo,b:b.mesi[i].saldo})).filter(x=>Math.abs(x.a-x.b)>0.004);
   return header('Simulatore')+
-  `<section class="card"><h2>Effetto</h2><div class="cmp"><span class="h"></span><span class="h">Oggi</span><span class="h">Simulato</span>${cmp('Saldo '+MESI[mi].toLowerCase(),a.mesi[mi].saldo,b.mesi[mi].saldo)}${cmp('Avanzo a '+MB[mi].toLowerCase(),a.mesi[mi].avanzo,b.mesi[mi].avanzo)}${cmp('Fine anno',a.mesi[11].avanzo,b.mesi[11].avanzo)}${cmp('Stipendio standard',a.std,b.std)}</div>${changed.length?`<p class="note">Mesi toccati: ${changed.map(x=>MB[x.m-1]+' '+sgn(r2(x.b-x.a))).join(' · ')}</p>`:'<p class="note">Aggiungi una spesa o un netto ipotetico: i dati reali non cambiano finché non confermi.</p>'}</section>`+
-  `<section class="card tight"><div class="row-head" style="padding-top:12px"><h2>Ipotesi</h2></div><div class="list">${S.sim.extra.map((e,i)=>`<div class="item"><span class="grow"><span class="t">${esc(e.descrizione)}</span><span class="s">${esc(catName(e.categoria))} · ${mesiLabel(e.importi)}</span></span><span class="amt">${eur(e.importi.reduce((x,v)=>x+(+v||0),0))}</span><button class="ghost" data-act="simdel" data-k="${i}" aria-label="Togli ipotesi">${ICON.close}</button></div>`).join('')}${Object.entries(S.sim.netti).map(([m,v])=>`<div class="item"><span class="grow"><span class="t">Netto ${nomeStip(+m).toLowerCase()}</span><span class="s">Ipotetico</span></span><span class="amt">${eur(+v)}</span><button class="ghost" data-act="simdeln" data-k="${m}" aria-label="Togli netto ipotetico">${ICON.close}</button></div>`).join('')||'<p class="empty">Nessuna ipotesi.</p>'}</div></section>`+
+  `<section class="card"><h2>Effetto</h2><div class="cmp"><span class="h"></span><span class="h">Oggi</span><span class="h">Simulato</span>${cmp('Saldo '+MESI[mi],a.mesi[mi].saldo,b.mesi[mi].saldo)}${cmp('Avanzo a '+MB[mi],a.mesi[mi].avanzo,b.mesi[mi].avanzo)}${cmp('Fine anno',a.mesi[11].avanzo,b.mesi[11].avanzo)}${cmp('Stipendio standard',a.std,b.std)}</div>${changed.length?`<p class="note">Mesi toccati: ${changed.map(x=>MB[x.m-1]+' '+sgn(r2(x.b-x.a))).join(' · ')}</p>`:'<p class="note">Aggiungi una spesa o un netto ipotetico: i dati reali non cambiano finché non confermi.</p>'}</section>`+
+  `<section class="card tight"><div class="row-head" style="padding-top:12px"><h2>Ipotesi</h2></div><div class="list">${S.sim.extra.map((e,i)=>`<div class="item"><span class="grow"><span class="t">${esc(e.descrizione)}</span><span class="s">${esc(catName(e.categoria))} · ${mesiLabel(e.importi)}</span></span><span class="amt">${eur(e.importi.reduce((x,v)=>x+(+v||0),0))}</span><button class="ghost" data-act="simdel" data-k="${i}" aria-label="Togli ipotesi">${ICON.close}</button></div>`).join('')}${Object.entries(S.sim.netti).map(([m,v])=>`<div class="item"><span class="grow"><span class="t">Netto ${nomeStip(+m)}</span><span class="s">Ipotetico</span></span><span class="amt">${eur(+v)}</span><button class="ghost" data-act="simdeln" data-k="${m}" aria-label="Togli netto ipotetico">${ICON.close}</button></div>`).join('')||'<p class="empty">Nessuna ipotesi.</p>'}</div></section>`+
   `<div class="actions"><button class="pill-btn soft" data-act="simspesa">+ Spesa ipotetica</button><button class="pill-btn soft" data-act="simnetto">+ Netto ipotetico</button></div>`+
   (has?`<div class="actions"><button class="pill-btn danger" data-act="simreset">Annulla tutto</button><button class="pill-btn" data-act="simok">Conferma e salva</button></div>`:'');
 }
@@ -826,7 +826,7 @@ function sheetAdd(kind='uscita'){
     const scadDraw=()=>{const v=scad===null?scadAuto():scad;$('#a-scad').setAttribute('aria-checked',v)};
     let ptipo='certo';const PTN={certo:'Diventa pagata da sola nel giorno di addebito; puoi correggerla dopo.',variabile:'Dal giorno di addebito resta "da confermare" finché non scrivi l\'importo vero.',budget:'Tetto mensile che le spese vere consumano. A mese chiuso conta solo il reale.'};
     const prevMesi=()=>{const da=+$('#a-pda').value,a=+$('#a-pa').value,f=+$('#a-pf').value;const out=[];if(a<da)return out;for(let m=da;m<=a;m+=f){out.push(m);if(f===12)break}return out};
-    const prevUpd=()=>{const ms_=prevMesi(),v=num($('#a-imp').value);$('#a-pprev').textContent=!ms_.length?'"Fino a" deve venire dopo "Dal mese".':`${ms_.length} ${ms_.length===1?'addebito':'addebiti'} nel ${S.anno}: ${ms_.map(m=>MB[m-1].toLowerCase()).join(', ')}${v>0?` · totale ${eur(r2(v*ms_.length))}`:''}.`};
+    const prevUpd=()=>{const ms_=prevMesi(),v=num($('#a-imp').value);$('#a-pprev').textContent=!ms_.length?'"Fino a" deve venire dopo "Dal mese".':`${ms_.length} ${ms_.length===1?'addebito':'addebiti'} nel ${S.anno}: ${ms_.map(m=>MB[m-1]).join(', ')}${v>0?` · totale ${eur(r2(v*ms_.length))}`:''}.`};
     el.querySelectorAll('[data-ptipo]').forEach(b=>b.onclick=()=>{ptipo=b.dataset.ptipo;if(ptipo==='budget'){$('#a-pf').value='1'}sync()});
     ['#a-pda','#a-pa','#a-pf'].forEach(q=>$(q).addEventListener('change',prevUpd));$('#a-imp').addEventListener('input',()=>{if(verso==='prevista')prevUpd()});
     $('#a-scad').onclick=()=>{scad=!($('#a-scad').getAttribute('aria-checked')==='true');scadDraw()};$('#a-cat').addEventListener('change',()=>{if(verso==='prevista')scadDraw()});el.querySelectorAll('.k-pchips [data-cat]').forEach(b=>b.addEventListener('click',()=>setTimeout(scadDraw)));
@@ -850,14 +850,14 @@ function sheetAdd(kind='uscita'){
         await put('previsioni/'+newId(),{anno:S.anno,categoria:cat,descrizione:desc||catName(cat),tipo:ptipo,giorno:ptipo!=='budget'&&g>=1&&g<=31?g:null,scadenza:ptipo!=='budget'&&$('#a-scad').getAttribute('aria-checked')==='true',metodo:met,importi,effettivi:{}});
         close();toast(`Prevista: ${desc||catName(cat)} ${eur(v)} · ${mesiLabel(importi)}`);return}const mese=+ms.value;const data=d.value||null;
       if(verso==='entrata'&&sub==='stipendio'){const m=+$('#a-sm').value,l=num($('#a-lordo').value);
-        await put('stipendi/'+S.anno+'-'+pad(m),{anno:S.anno,mese:m,netto:r2(v),lordo:isNaN(l)?null:r2(l),stato:'confermato'});close();toast(`Inserito: stipendio ${nomeStip(m).toLowerCase()} ${eur(v)} netto (confermato)`);return}
-      if(verso==='entrata'&&sub==='spot'){await put('movimenti/'+newId('movimenti'),{anno:S.anno,mese,data,tipo:'spot',descrizione:desc||'Entrata',importo:r2(v),metodo:met});close();toast(`Inserito: +${eur(v)} entrata spot · ${MESI[mese-1].toLowerCase()}`);return}
+        await put('stipendi/'+S.anno+'-'+pad(m),{anno:S.anno,mese:m,netto:r2(v),lordo:isNaN(l)?null:r2(l),stato:'confermato'});close();toast(`Inserito: stipendio ${nomeStip(m)} ${eur(v)} netto (confermato)`);return}
+      if(verso==='entrata'&&sub==='spot'){await put('movimenti/'+newId('movimenti'),{anno:S.anno,mese,data,tipo:'spot',descrizione:desc||'Entrata',importo:r2(v),metodo:met});close();toast(`Inserito: +${eur(v)} entrata spot · ${MESI[mese-1]}`);return}
       const cat=sel.value;
-      if(verso==='entrata'&&sub==='reso'){await put('movimenti/'+newId('movimenti'),{anno:S.anno,mese,data,tipo:'reso',categoria:cat,descrizione:desc||'Storno / reso',importo:r2(v),metodo:met});close();toast(`Inserito: reso +${eur(v)} su ${catName(cat)} · ${MESI[mese-1].toLowerCase()}`);return}
+      if(verso==='entrata'&&sub==='reso'){await put('movimenti/'+newId('movimenti'),{anno:S.anno,mese,data,tipo:'reso',categoria:cat,descrizione:desc||'Storno / reso',importo:r2(v),metodo:met});close();toast(`Inserito: reso +${eur(v)} su ${catName(cat)} · ${MESI[mese-1]}`);return}
       const R=RE.quote();if(!R.ok){toast(R.err);return}
       const base={data,tipo:'spesa',categoria:cat,descrizione:desc||catName(cat),metodo:met};
       await salvaQuote(base,v,R.list,null);
-      close();toast(`Inserito: ${eur(v)} ${catName(cat)} · ${met}`+(R.list.length>1?` · ${R.list.map(q=>MB[q.mese-1].toLowerCase()+' '+n2(q.importo)).join(', ')}`:` · addebito ${MESI[R.list[0].mese-1].toLowerCase()}`));
+      close();toast(`Inserito: ${eur(v)} ${catName(cat)} · ${met}`+(R.list.length>1?` · ${R.list.map(q=>MB[q.mese-1]+' '+n2(q.importo)).join(', ')}`:` · addebito ${MESI[R.list[0].mese-1].toLowerCase()}`));
     };
   });
 }
@@ -875,7 +875,7 @@ function sheetMov(id){
     const $=q=>el.querySelector(q);
     $('#f-m').onsubmit=async e=>{e.preventDefault();const v=num($('#m-imp').value);if(!(v>0)){toast('Importo non valido');return}
       const nd=clean(s);Object.assign(nd,{importo:r2(v),descrizione:$('#m-desc').value.trim(),data:$('#m-data').value||null,mese:+$('#m-mese').value,metodo:$('#m-met').value||null});if($('#m-cat'))nd.categoria=$('#m-cat').value;
-      await put('movimenti/'+s.id,nd);close();toast(`Aggiornato: ${eur(v)}${nd.categoria?' '+catName(nd.categoria):''} · ${MESI[nd.mese-1].toLowerCase()}`)};
+      await put('movimenti/'+s.id,nd);close();toast(`Aggiornato: ${eur(v)}${nd.categoria?' '+catName(nd.categoria):''} · ${MESI[nd.mese-1]}`)};
     $('#m-del').onclick=async()=>{close();
       if(s.gruppo){const all=S.D.movimenti.filter(x=>x.gruppo===s.gruppo);if(!await confirmBox('Elimina uscita ripartita',`Eliminare tutte le ${all.length} quote di "${esc(s.descrizione)}"? Per togliere una sola quota, modificane l'importo.`,'Elimina tutte',true))return;for(const x of all)await del('movimenti/'+x.id);toast('Eliminate '+all.length+' quote');return}
       if(await confirmBox('Elimina movimento',`Eliminare "${esc(s.descrizione)}" da ${eur(+s.importo)}?`,'Elimina',true)){await del('movimenti/'+s.id);toast('Movimento eliminato')}};
@@ -886,7 +886,7 @@ function sheetIst(pid,m){
   const p=S.D.previsioni.find(x=>x.id===pid);if(!p)return;
   const i=istanze(S.D,p.anno,today()).find(x=>x.p.id===pid&&x.m===m);if(!i)return;
   const eff=p.effettivi&&p.effettivi[String(m)]!=null;
-  const info=i.stato==='effettivo'?(i.auto?`Pagata in automatico${p.giorno?' il giorno '+p.giorno:' a fine mese'}. Se l'importo vero è diverso, correggilo.`:'Confermata con l\'importo vero.'):i.stato==='daconfermare'?'Il giorno di addebito è passato: scrivi l\'importo vero per confermarla.':`Prevista per ${MESI[m-1].toLowerCase()}${p.giorno?', giorno '+p.giorno:''}.`;
+  const info=i.stato==='effettivo'?(i.auto?`Pagata in automatico${p.giorno?' il giorno '+p.giorno:' a fine mese'}. Se l'importo vero è diverso, correggilo.`:'Confermata con l\'importo vero.'):i.stato==='daconfermare'?'Il giorno di addebito è passato: scrivi l\'importo vero per confermarla.':`Prevista per ${MESI[m-1]}${p.giorno?', giorno '+p.giorno:''}.`;
   openSheet(p.descrizione+' · '+MESI[m-1],`<form id="f-i" novalidate style="display:flex;flex-direction:column;gap:14px"><p class="note">${statoChip(i.stato)} ${esc(catName(p.categoria))} · ${TIPI[p.tipo]}. ${info}</p>
    <div class="field"><label for="i-imp">Importo effettivo (€)</label><input id="i-imp" class="big num" inputmode="decimal" value="${inp(i.importo)}" data-autofocus></div>
    <p class="note">Previsto: ${eur(i.previsto)}</p>
@@ -894,7 +894,7 @@ function sheetIst(pid,m){
    <div class="actions">${eff?'<button class="pill-btn soft" type="button" id="i-undo">Torna al previsto</button>':''}<button class="pill-btn soft" type="button" id="i-edit">Modifica la previsione</button></div></form>`,(el,close)=>{
     const $=q=>el.querySelector(q);
     $('#f-i').onsubmit=async e=>{e.preventDefault();const v=num($('#i-imp').value);if(isNaN(v)||v<0){toast('Importo non valido');return}
-      const nd=clean(p);nd.effettivi=Object.assign({},p.effettivi||{});nd.effettivi[String(m)]=r2(v);await put('previsioni/'+p.id,nd);close();toast(`Confermata: ${p.descrizione} ${MESI[m-1].toLowerCase()} ${eur(v)}`)};
+      const nd=clean(p);nd.effettivi=Object.assign({},p.effettivi||{});nd.effettivi[String(m)]=r2(v);await put('previsioni/'+p.id,nd);close();toast(`Confermata: ${p.descrizione} ${MESI[m-1]} ${eur(v)}`)};
     if(eff)$('#i-undo').onclick=async()=>{const nd=clean(p);nd.effettivi=Object.assign({},p.effettivi);delete nd.effettivi[String(m)];await put('previsioni/'+p.id,nd);close();toast('Tornata al previsto')};
     $('#i-edit').onclick=()=>{close();sheetPrev(p.id)};
   });
@@ -937,16 +937,16 @@ function sheetStip(m){
     el.querySelector('#f-st').onsubmit=async e=>{e.preventDefault();const n=num(el.querySelector('#st-n').value),l=num(el.querySelector('#st-l').value);if(isNaN(n)){toast('Scrivi il netto');return}
       const nm=+el.querySelector('#st-m').value;
       if(nm!==m){const other=S.D.stipendi.find(x=>x.anno===S.anno&&x.mese===nm);
-        if(other){close();if(!await confirmBox('Mensilità già presente',`Per ${nomeStip(nm).toLowerCase()} ${S.anno} c'è già un netto di ${eur(+other.netto)}. Lo sostituisco con questo?`,'Sostituisci',true))return}}
+        if(other){close();if(!await confirmBox('Mensilità già presente',`Per ${nomeStip(nm)} ${S.anno} c'è già un netto di ${eur(+other.netto)}. Lo sostituisco con questo?`,'Sostituisci',true))return}}
       await put('stipendi/'+S.anno+'-'+pad(nm),{anno:S.anno,mese:nm,netto:r2(n),lordo:isNaN(l)?null:r2(l),stato:st});
       if(nm!==m&&doc)await del('stipendi/'+doc.id);
-      if(sheetClose)close();toast(nm!==m&&doc?`Netto spostato da ${nomeStip(m).toLowerCase()} a ${nomeStip(nm).toLowerCase()}: ${eur(n)}`:`Netto ${nomeStip(nm).toLowerCase()}: ${eur(n)} (${st})`)};
-    if(doc)el.querySelector('#st-del').onclick=async()=>{close();if(await confirmBox('Elimina netto',`Eliminare il netto di ${nomeStip(m).toLowerCase()} ${S.anno}? Tornerà simulato con l'anno prima, se c'è.`,'Elimina',true)){await del('stipendi/'+doc.id);toast('Netto eliminato')}};
+      if(sheetClose)close();toast(nm!==m&&doc?`Netto spostato da ${nomeStip(m)} a ${nomeStip(nm)}: ${eur(n)}`:`Netto ${nomeStip(nm)}: ${eur(n)} (${st})`)};
+    if(doc)el.querySelector('#st-del').onclick=async()=>{close();if(await confirmBox('Elimina netto',`Eliminare il netto di ${nomeStip(m)} ${S.anno}? Tornerà simulato con l'anno prima, se c'è.`,'Elimina',true)){await del('stipendi/'+doc.id);toast('Netto eliminato')}};
   });
 }
 function sheetRiporto(){
   const v=+((cfg().riporti||{})[S.anno]||0);
-  openSheet('Riporto '+S.anno,`<form id="f-r" novalidate style="display:flex;flex-direction:column;gap:14px"><div class="field"><label for="r-v">Riporto dall'anno precedente (€)</label><input id="r-v" class="big num" inputmode="decimal" value="${inp(v)}"></div><p class="note">Si somma alla disponibilità di gennaio. Negativo se riporti un disavanzo.</p><div class="actions"><button class="pill-btn" type="submit">Salva</button></div></form>`,(el,close)=>{
+  openSheet('Riporto '+S.anno,`<form id="f-r" novalidate style="display:flex;flex-direction:column;gap:14px"><div class="field"><label for="r-v">Riporto dall'anno precedente (€)</label><input id="r-v" class="big num" inputmode="decimal" value="${inp(v)}"></div><p class="note">Si somma alla disponibilità di Gennaio. Negativo se riporti un disavanzo.</p><div class="actions"><button class="pill-btn" type="submit">Salva</button></div></form>`,(el,close)=>{
     el.querySelector('#f-r').onsubmit=async e=>{e.preventDefault();const n=num(el.querySelector('#r-v').value);if(isNaN(n)){toast('Importo non valido');return}const c=JSON.parse(JSON.stringify(cfg()));c.riporti=c.riporti||{};c.riporti[String(S.anno)]=r2(n);await saveConfig(c);close();toast('Riporto: '+eur(n))};
   });
 }
@@ -987,7 +987,7 @@ async function simConfirm(){
 async function creaAnno(n){
   const prevY=n-1;
   if(!haDati(prevY)){toast('Mancano previsioni e movimenti del '+prevY);return}
-  if(!await confirmBox('Crea previsionale '+n,`Copio le previsioni del ${prevY} (senza le conferme) e aggiungo, per ogni categoria, un budget pari alle altre spese del ${prevY}. Il riporto di gennaio parte dall'avanzo di fine ${prevY}. I netti si prendono già in automatico dal ${prevY}. Procedo?`,'Crea'))return;
+  if(!await confirmBox('Crea previsionale '+n,`Copio le previsioni del ${prevY} (senza le conferme) e aggiungo, per ogni categoria, un budget pari alle altre spese del ${prevY}. Il riporto di Gennaio parte dall'avanzo di fine ${prevY}. I netti si prendono già in automatico dal ${prevY}. Procedo?`,'Crea'))return;
   const y=computeYear(S.D,prevY,today());
   const attN=id=>{const c=cats().find(x=>x.id===id);return !c||catAttiva(c,n)};const pv=S.D.previsioni.filter(p=>p.anno===prevY&&attN(p.categoria));const ist=istanze(S.D,prevY,today());
   for(const p of pv){const d=clean(p);d.anno=n;d.effettivi={};await put('previsioni/'+newId('previsioni'),d)}
@@ -1169,7 +1169,7 @@ function sheetGruppo(g){
     $('#f-g').onsubmit=async e=>{e.preventDefault();const v=num(imp.value);if(!(v>0)){toast('Importo non valido');return}
       const R=RE.quote();if(!R.ok){toast(R.err);return}
       await salvaQuote({data:$('#g-data').value||null,tipo:'spesa',categoria:$('#g-cat').value,descrizione:$('#g-desc').value.trim(),metodo:$('#g-met').value||null},v,R.list,g);
-      close();toast(`Aggiornato: ${eur(v)} · `+R.list.map(q=>MB[q.mese-1].toLowerCase()+' '+n2(q.importo)).join(', '))};
+      close();toast(`Aggiornato: ${eur(v)} · `+R.list.map(q=>MB[q.mese-1]+' '+n2(q.importo)).join(', '))};
     $('#g-del').onclick=async()=>{close();if(!await confirmBox('Elimina uscita ripartita',`Eliminare "${esc(s.descrizione)}" da ${eur(tot)} con tutte le sue ${qs.length} quote?`,'Elimina',true))return;for(const x of qs)await del('movimenti/'+x.id);toast('Uscita eliminata')};
   });
 }
@@ -1326,7 +1326,7 @@ function checkRiporto(){
   const av=computeYear(S.D,prev,today()).mesi[11].avanzo;
   const cur=(cfg().riporti||{})[String(Yr)];
   if(cur!=null&&Math.abs(cur-av)<0.005){lsSet(key,'ok');return}
-  openSheet('Riporto '+Yr,`<p style="margin:0">Il ${prev} si è chiuso con un avanzo di <strong class="num">${sgn(av)}</strong>.</p><p class="note">Riporto di gennaio ${Yr} oggi: <strong class="num">${cur==null?'non impostato':eur(cur)}</strong>. Lo aggiorno con l'avanzo reale di dicembre ${prev}?</p><div class="actions"><button class="pill-btn soft" data-r="no">Lascia così</button><button class="pill-btn" data-r="si">Aggiorna</button></div>`,(el,close)=>{
+  openSheet('Riporto '+Yr,`<p style="margin:0">Il ${prev} si è chiuso con un avanzo di <strong class="num">${sgn(av)}</strong>.</p><p class="note">Riporto di Gennaio ${Yr} oggi: <strong class="num">${cur==null?'non impostato':eur(cur)}</strong>. Lo aggiorno con l'avanzo reale di Dicembre ${prev}?</p><div class="actions"><button class="pill-btn soft" data-r="no">Lascia così</button><button class="pill-btn" data-r="si">Aggiorna</button></div>`,(el,close)=>{
     el.querySelectorAll('[data-r]').forEach(b=>b.onclick=async()=>{lsSet(key,b.dataset.r);close();
       if(b.dataset.r==='si'){const c=JSON.parse(JSON.stringify(cfg()));c.riporti=c.riporti||{};c.riporti[String(Yr)]=r2(av);await saveConfig(c);toast('Riporto '+Yr+': '+eur(av))}});
   },{compact:true});
