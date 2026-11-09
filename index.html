@@ -344,12 +344,12 @@ function buildWorkbook(ExcelJS,D,anno,oggi,nome){
   const rows=[];
   (D.movimenti||[]).filter(x=>x.anno===anno).forEach(x=>{
     const tipo=x.tipo==='spesa'?'Spesa':x.tipo==='reso'?'Storno / reso':'Entrata spot';
-    rows.push({data:x.data?new Date(x.data+'T12:00:00'):null,m:x.mese,mov:x.tipo==='spesa'?'Uscita':'Entrata',tipo,cat:catNome(x.categoria),desc:x.descrizione||'',met:x.metodo||'',u:x.tipo==='spesa'?+x.importo:null,e:x.tipo==='spesa'?null:+x.importo,stato:'Effettivo',quota:x.quota||''});
+    rows.push({data:x.data?new Date(x.data+'T12:00:00'):null,m:x.mese,mov:x.tipo==='spesa'?'Uscita':'Entrata',tipo,cat:catNome(x.categoria),desc:x.descrizione||'',met:x.metodo||'',u:x.tipo==='spesa'?+x.importo:null,e:x.tipo==='spesa'?null:+x.importo,stato:'Effettivo',quota:x.quota?x.quota+' di '+(+x.totale||0).toLocaleString('it-IT',{minimumFractionDigits:2})+' €':''});
   });
   y.ist.forEach(i=>rows.push({data:dataAddebito(anno,i.m,i.p.giorno||28),m:i.m,mov:'Uscita',tipo:'Prevista ('+(i.p.tipo==='certo'?'certa':'variabile')+')',cat:catNome(i.p.categoria),desc:i.p.descrizione,met:i.p.metodo||'',u:i.importo,e:null,stato:i.stato==='effettivo'?(i.auto?'Pagata (automatica)':'Pagata'):i.stato==='daconfermare'?'Da confermare':'Prevista',quota:''}));
   Object.entries(y.netti).forEach(([mm,n])=>{if(n.stato!=='confermato')return;mm=+mm;const m=mm<=12?mm:mm===13?7:12;rows.push({data:null,m,mov:'Entrata',tipo:'Stipendio',cat:'',desc:'Stipendio '+(mm<=12?MES[mm-1].toLowerCase():mm===13?'13ª':'14ª'),met:'',u:null,e:n.netto,stato:'Effettivo',quota:''})});
   rows.sort((a,b)=>a.m-b.m||((a.data?a.data.getTime():9e15)-(b.data?b.data.getTime():9e15)));
-  wr.columns=[{header:'Data',key:'data',width:12},{header:'Mese addebito',key:'mese',width:14},{header:'Movimento',key:'mov',width:11},{header:'Tipo',key:'tipo',width:20},{header:'Categoria',key:'cat',width:24},{header:'Descrizione',key:'desc',width:38},{header:'Metodo',key:'met',width:15},{header:'Uscita',key:'u',width:13},{header:'Entrata',key:'e',width:13},{header:'Stato',key:'stato',width:19},{header:'Quota',key:'quota',width:8}];
+  wr.columns=[{header:'Data',key:'data',width:12},{header:'Mese addebito',key:'mese',width:14},{header:'Movimento',key:'mov',width:11},{header:'Tipo',key:'tipo',width:20},{header:'Categoria',key:'cat',width:24},{header:'Descrizione',key:'desc',width:38},{header:'Metodo',key:'met',width:15},{header:'Uscita',key:'u',width:13},{header:'Entrata',key:'e',width:13},{header:'Stato',key:'stato',width:19},{header:'Ripartizione',key:'quota',width:20}];
   head(wr.getRow(1));
   rows.forEach((x,i)=>{const row=wr.addRow({data:x.data,mese:MES[x.m-1],mov:x.mov,tipo:x.tipo,cat:x.cat,desc:x.desc,met:x.met,u:x.u,e:x.e,stato:x.stato,quota:x.quota});
     row.getCell(1).numFmt='dd/mm/yyyy';row.getCell(8).numFmt=EUR;row.getCell(9).numFmt=EUR;
@@ -573,7 +573,7 @@ function vRegistro(){
     if(r.k==='ist')return istRow(r.i);
     if(r.k==='stip')return `<button class="item" data-act="editstip" data-k="${r.mm}"><span class="badge in">€</span><span class="grow"><span class="t">Stipendio ${nomeStip(r.mm).toLowerCase()}</span><span class="s">Entrata · netto confermato</span></span><span class="amt pos">+${eur(r.importo)}</span></button>`;
     const x=r.x;const tl=x.tipo==='spot'?'Entrata spot':x.tipo==='reso'?'Storno / reso · '+esc(catName(x.categoria)):esc(catName(x.categoria));
-    return `<button class="item" data-act="editmov" data-id="${esc(x.id)}"><span class="badge ${r.entrata?'in':''}">${r.entrata?'+':esc(initials(catName(x.categoria)))}</span><span class="grow"><span class="t">${esc(x.descrizione||catName(x.categoria))}</span><span class="s">${tl}${x.data?' · '+fmtDate(x.data):''}${x.metodo?' · '+esc(x.metodo):''}${x.quota?' · quota '+esc(x.quota):''}</span></span><span class="amt ${r.entrata?'pos':''}">${r.entrata?'+':'−'}${eur(r.importo)}</span></button>`};
+    return `<button class="item" data-act="editmov" data-id="${esc(x.id)}"><span class="badge ${r.entrata?'in':''}">${r.entrata?'+':esc(initials(catName(x.categoria)))}</span><span class="grow"><span class="t">${esc(x.descrizione||catName(x.categoria))}</span><span class="s">${tl}${x.data?' · '+fmtDate(x.data):''}${x.metodo?' · '+esc(x.metodo):''}${x.quota?' · quota '+esc(x.quota):''}</span></span><span class="amt ${r.entrata?'pos':''}">${r.entrata?'+':'−'}${eur(r.importo)}${x.gruppo?`<span class="s" style="display:block;font-weight:500">di ${eur(+x.totale||0)}</span>`:''}</span></button>`};
   return header('Registro')+chips+`<div class="sum-line"><span>Uscite <strong class="num">${eur(usc)}</strong></span><span>Entrate <strong class="num pos">${eur(ent)}</strong></span><span class="muted">Ancora previste <strong class="num">${eur(pre)}</strong></span></div>`+
    (budRows&&(F==='tutti'||F==='uscite')?`<p class="sec-title">Budget del mese</p><section class="card tight"><div class="list">${budRows}</div></section>`:'')+
    `<p class="sec-title">Movimenti</p><section class="card tight"><div class="list">${rows.map(rowHtml).join('')||'<p class="empty">Nessun movimento con questo filtro.</p>'}</div></section>`;
@@ -704,7 +704,7 @@ function sheetAdd(kind='uscita'){
    <div class="field k-met"><label id="a-metlbl">Metodo di pagamento</label>${metPick(lastMet()||metodi()[0])}</div>
    <div class="field k-desc"><label for="a-desc">Descrizione</label><input id="a-desc" autocomplete="off" placeholder="Es. Benzina, Cena, Reso Zalando…"></div>
    <div class="two k-date"><div class="field"><label for="a-data">Data</label><input id="a-data" type="date" value="${isoToday()}"></div><div class="field"><label for="a-mese">Mese di addebito</label><select id="a-mese">${meseOptions(curM())}</select></div></div>
-   <div class="field k-rip"><label for="a-rip">Ripartisci su</label><select id="a-rip">${Array.from({length:12},(_,i)=>`<option value="${i+1}">${i===0?'1 mese (nessuna ripartizione)':(i+1)+' mesi'}</option>`).join('')}</select><p class="note" id="a-ripnote"></p></div>
+   <div class="field k-rip"><label>Ripartizione</label><div id="a-ripbox"></div></div>
    <p class="note k-resonote">Lo storno o reso riduce la spesa della categoria: il saldo del mese risale dell'importo.</p>
    <div class="actions"><button class="pill-btn" type="submit">Salva</button></div>
   </form>`;
@@ -726,9 +726,9 @@ function sheetAdd(kind='uscita'){
     el.querySelectorAll('[data-cat]').forEach(b=>b.onclick=()=>{sel.value=b.dataset.cat;el.querySelectorAll('[data-cat]').forEach(x=>x.setAttribute('aria-pressed',x===b))});
     sel.onchange=()=>el.querySelectorAll('[data-cat]').forEach(x=>x.setAttribute('aria-pressed',x.dataset.cat===sel.value));
     const d=$('#a-data'),ms=$('#a-mese');d.onchange=()=>{if(d.value)ms.value=String(+d.value.split('-')[1])};
-    const rip=$('#a-rip'),rn=$('#a-ripnote'),imp=$('#a-imp');
-    const upd=()=>{const n=+rip.value,v=num(imp.value);rn.textContent=n>1&&v>0?`${n} quote da ${eur(r2(v/n))}, da ${MESI[ms.value-1].toLowerCase()} in poi. Uscita reale una sola volta.`:''};
-    rip.onchange=upd;imp.oninput=upd;ms.addEventListener('change',upd);
+    const imp=$('#a-imp');
+    const RE=ripEditor($('#a-ripbox'),{tot:()=>num(imp.value),start:()=>({anno:S.anno,mese:+ms.value})});
+    imp.addEventListener('input',RE.refresh);ms.addEventListener('change',RE.refresh);
     $('#f-add').onsubmit=async e=>{e.preventDefault();if(!(verso==='entrata'&&sub==='stipendio'))setLastMet(met);
       const v=num(imp.value);if(!(v>0)){imp.focus();toast('Scrivi un importo maggiore di zero');return}
       const desc=$('#a-desc').value.trim();const mese=+ms.value;const data=d.value||null;
@@ -737,15 +737,16 @@ function sheetAdd(kind='uscita'){
       if(verso==='entrata'&&sub==='spot'){await put('movimenti/'+newId('movimenti'),{anno:S.anno,mese,data,tipo:'spot',descrizione:desc||'Entrata',importo:r2(v),metodo:met});close();toast(`Inserito: +${eur(v)} entrata spot · ${MESI[mese-1].toLowerCase()}`);return}
       const cat=sel.value;
       if(verso==='entrata'&&sub==='reso'){await put('movimenti/'+newId('movimenti'),{anno:S.anno,mese,data,tipo:'reso',categoria:cat,descrizione:desc||'Storno / reso',importo:r2(v),metodo:met});close();toast(`Inserito: reso +${eur(v)} su ${catName(cat)} · ${MESI[mese-1].toLowerCase()}`);return}
-      const n=+rip.value;
-      if(n===1)await put('movimenti/'+newId('movimenti'),{anno:S.anno,mese,data,tipo:'spesa',categoria:cat,descrizione:desc||catName(cat),importo:r2(v),metodo:met});
-      else{const g=newId('movimenti');const q=r2(v/n);for(let i=0;i<n;i++){const mm=mese+i;const an=S.anno+Math.floor((mm-1)/12);const me=((mm-1)%12)+1;await put('movimenti/'+newId('movimenti'),{anno:an,mese:me,data,tipo:'spesa',categoria:cat,descrizione:desc||catName(cat),importo:i===n-1?r2(v-q*(n-1)):q,gruppo:g,quota:(i+1)+'/'+n,totale:r2(v),metodo:met})}}
-      close();toast(`Inserito: ${eur(v)} ${catName(cat)} · ${met} · addebito ${MESI[mese-1].toLowerCase()}${n>1?` in ${n} quote`:''}`);
+      const R=RE.quote();if(!R.ok){toast(R.err);return}
+      const base={data,tipo:'spesa',categoria:cat,descrizione:desc||catName(cat),metodo:met};
+      await salvaQuote(base,v,R.list,null);
+      close();toast(`Inserito: ${eur(v)} ${catName(cat)} · ${met}`+(R.list.length>1?` · ${R.list.map(q=>MB[q.mese-1].toLowerCase()+' '+n2(q.importo)).join(', ')}`:` · addebito ${MESI[R.list[0].mese-1].toLowerCase()}`));
     };
   });
 }
 function sheetMov(id){
   const s=S.D.movimenti.find(x=>x.id===id);if(!s)return;
+  if(s.gruppo&&s.tipo==='spesa')return sheetGruppo(s.gruppo);
   const tit=s.tipo==='spesa'?'Modifica uscita':s.tipo==='reso'?'Modifica storno / reso':'Modifica entrata spot';
   openSheet(tit,`<form id="f-m" novalidate style="display:flex;flex-direction:column;gap:14px">${s.gruppo?`<p class="note">Quota ${esc(s.quota)} di un'uscita da ${eur(+s.totale||0)} ripartita su più mesi.</p>`:''}
    <div class="field"><label for="m-imp">Importo (€)</label><input id="m-imp" class="big num" inputmode="decimal" value="${inp(s.importo)}"></div>
@@ -987,6 +988,81 @@ document.addEventListener('submit',async e=>{
     if(!calm&&v.animate)v.animate([{transform:`translateX(${d*28}px)`,opacity:.35},{transform:'none',opacity:1}],{duration:230,easing:'ease-out'});
   },{passive:true});
 })();
+
+// ---------- ripartizione di un'uscita ----------
+function mesiDa(anno,mese,n=18){const out=[];for(let i=0;i<n;i++){const mm=mese-1+i;out.push({anno:anno+Math.floor(mm/12),mese:mm%12+1})}return out}
+const amKey=x=>x.anno+'-'+pad(x.mese);
+const amLabel=x=>MESI[x.mese-1]+(x.anno!==S.anno?' '+x.anno:'');
+function ripEditor(box,{tot,start,init}){
+  let mode=init?init.mode:'no',n=init&&init.n||2;
+  let rows=init&&init.rows?init.rows.map(r=>({am:r.am,v:r.v})):null;
+  box.innerHTML=`<div class="seg" role="group" aria-label="Ripartizione"><button type="button" data-rip="no">Nessuna</button><button type="button" data-rip="eq">In parti uguali</button><button type="button" data-rip="cu">Personalizzata</button></div>
+   <div class="rip-eq" style="margin-top:10px"><label for="rip-n" class="small muted">Numero di mesi, dal mese di addebito</label><select id="rip-n" style="margin-top:6px">${Array.from({length:11},(_,i)=>`<option value="${i+2}" ${i+2===n?'selected':''}>${i+2} mesi</option>`).join('')}</select></div>
+   <div class="rip-cu" style="margin-top:10px;display:flex;flex-direction:column;gap:8px"><div class="rip-rows" style="display:flex;flex-direction:column;gap:8px"></div><button type="button" class="link rip-add" style="align-self:flex-start">+ Aggiungi mese</button></div>
+   <p class="note rip-note" style="margin-top:8px"></p>`;
+  const $=q=>box.querySelector(q);
+  const opts=sel=>mesiDa(start().anno,start().mese).map(x=>`<option value="${amKey(x)}" ${amKey(x)===sel?'selected':''}>${amLabel(x)}</option>`).join('');
+  const ensureRows=()=>{if(rows&&rows.length)return;const m=mesiDa(start().anno,start().mese,2);rows=m.map(x=>({am:amKey(x),v:''}))};
+  const drawRows=()=>{$('.rip-rows').innerHTML=rows.map((r,i)=>`<div style="display:grid;grid-template-columns:1.2fr 1fr 44px;gap:8px;align-items:center"><select data-i="${i}" class="rip-m" aria-label="Mese della quota ${i+1}" style="height:46px;font-size:16px">${opts(r.am)}</select><input data-i="${i}" class="rip-v num" inputmode="decimal" placeholder="0,00" aria-label="Importo della quota ${i+1}" value="${esc(r.v)}" style="height:46px;font-size:16px;border-radius:12px;border:1px solid var(--line);background:var(--card);padding:0 12px;min-width:0"><button type="button" class="ghost rip-del" data-i="${i}" aria-label="Togli la quota ${i+1}" ${rows.length<=2?'disabled':''}>${ICON.close}</button></div>`).join('');
+    box.querySelectorAll('.rip-m').forEach(x=>x.onchange=()=>{rows[+x.dataset.i].am=x.value;note()});
+    box.querySelectorAll('.rip-v').forEach(x=>x.oninput=()=>{rows[+x.dataset.i].v=x.value;note()});
+    box.querySelectorAll('.rip-del').forEach(x=>x.onclick=()=>{rows.splice(+x.dataset.i,1);drawRows();note()})};
+  const calc=()=>{const v=tot();
+    if(mode==='no'){const s0=start();return {ok:true,list:[{anno:s0.anno,mese:s0.mese,importo:r2(v||0)}]}}
+    if(mode==='eq'){const m=mesiDa(start().anno,start().mese,n);const q=r2(v/n);return {ok:v>0,err:'Scrivi l\'importo',list:m.map((x,i)=>({anno:x.anno,mese:x.mese,importo:i===n-1?r2(v-q*(n-1)):q}))}}
+    const seen=new Set();const list=[];
+    for(const r of rows){const a=num(r.v);if(r.v===''||isNaN(a))continue;if(seen.has(r.am))return {ok:false,err:'Ogni mese può comparire una volta sola'};seen.add(r.am);const [an,me]=r.am.split('-').map(Number);list.push({anno:an,mese:me,importo:r2(a)})}
+    list.sort((a,b)=>a.anno-b.anno||a.mese-b.mese);
+    const somma=r2(list.reduce((s,q)=>s+q.importo,0)),resto=r2((v||0)-somma);
+    if(!(v>0))return {ok:false,err:'Scrivi l\'importo',list,resto};
+    if(list.length<2)return {ok:false,err:'Inserisci almeno due mesi con il loro importo',list,resto};
+    if(Math.abs(resto)>0.004)return {ok:false,err:resto>0?`Mancano ${eur(resto)} da ripartire`:`Hai ripartito ${eur(-resto)} in più del totale`,list,resto};
+    return {ok:true,list,resto:0}};
+  const note=()=>{const R=calc(),el=$('.rip-note');
+    if(mode==='no'){el.textContent='Conta tutta nel mese di addebito.';return}
+    if(mode==='eq'){el.textContent=R.ok?R.list.map(q=>amLabel(q)+' '+eur(q.importo)).join(' · ')+'. Uscita reale una sola volta.':'Scrivi l\'importo per vedere le quote.';return}
+    el.innerHTML=R.ok?'<span class="pos">Ripartito tutto.</span> Uscita reale una sola volta.':esc(R.err)};
+  const sync=()=>{box.querySelectorAll('[data-rip]').forEach(b=>b.setAttribute('aria-pressed',b.dataset.rip===mode));
+    $('.rip-eq').hidden=mode!=='eq';$('.rip-cu').hidden=mode!=='cu';if(mode==='cu'){ensureRows();drawRows()}note()};
+  box.querySelectorAll('[data-rip]').forEach(b=>b.onclick=()=>{mode=b.dataset.rip;sync()});
+  $('#rip-n').onchange=e=>{n=+e.target.value;note()};
+  $('.rip-add').onclick=()=>{ensureRows();const used=new Set(rows.map(r=>r.am));const nx=mesiDa(start().anno,start().mese).find(x=>!used.has(amKey(x)));if(!nx){toast('Hai già usato tutti i mesi disponibili');return}rows.push({am:amKey(nx),v:''});drawRows();note()};
+  sync();
+  return {quote:calc,refresh:()=>{if(mode==='cu')drawRows();note()}};
+}
+// scrive le quote (sostituendo quelle di un gruppo esistente)
+async function salvaQuote(base,totale,list,gruppoVecchio){
+  const old=gruppoVecchio?S.D.movimenti.filter(x=>x.gruppo===gruppoVecchio):[];
+  if(list.length===1){const q=list[0];const id=old[0]?old[0].id:newId();
+    await put('movimenti/'+id,Object.assign({},base,{anno:q.anno,mese:q.mese,importo:r2(totale)}));
+    for(const x of old.slice(1))await del('movimenti/'+x.id);return}
+  const g=gruppoVecchio||newId();
+  for(let i=0;i<list.length;i++){const q=list[i];const id=old[i]?old[i].id:newId();
+    await put('movimenti/'+id,Object.assign({},base,{anno:q.anno,mese:q.mese,importo:q.importo,gruppo:g,quota:(i+1)+'/'+list.length,totale:r2(totale)}))}
+  for(const x of old.slice(list.length))await del('movimenti/'+x.id);
+}
+function sheetGruppo(g){
+  const qs=S.D.movimenti.filter(x=>x.gruppo===g).sort((a,b)=>a.anno-b.anno||a.mese-b.mese);if(!qs.length)return;
+  const s=qs[0];const tot=+s.totale||r2(qs.reduce((a,x)=>a+(+x.importo),0));
+  const start={anno:s.anno,mese:s.mese};
+  openSheet('Modifica uscita ripartita',`<form id="f-g" novalidate style="display:flex;flex-direction:column;gap:14px">
+   <div class="field"><label for="g-imp">Importo totale (€)</label><input id="g-imp" class="big num" inputmode="decimal" value="${inp(tot)}"></div>
+   <div class="field"><label for="g-cat">Categoria</label><select id="g-cat">${catOptions(s.categoria)}</select></div>
+   <div class="field"><label for="g-met">Metodo di pagamento</label><select id="g-met">${metOptions(s.metodo||'')}</select></div>
+   <div class="field"><label for="g-desc">Descrizione</label><input id="g-desc" value="${esc(s.descrizione)}"></div>
+   <div class="two"><div class="field"><label for="g-data">Data</label><input id="g-data" type="date" value="${esc(s.data||'')}"></div><div class="field"><label for="g-mese">Primo mese</label><select id="g-mese">${meseOptions(s.mese)}</select></div></div>
+   <div class="field"><label>Ripartizione</label><div id="g-ripbox"></div></div>
+   <div class="actions"><button class="pill-btn danger" type="button" id="g-del">Elimina</button><button class="pill-btn" type="submit">Salva</button></div></form>`,(el,close)=>{
+    const $=q=>el.querySelector(q);const imp=$('#g-imp'),ms=$('#g-mese');
+    const RE=ripEditor($('#g-ripbox'),{tot:()=>num(imp.value),start:()=>({anno:start.anno,mese:+ms.value}),init:{mode:'cu',rows:qs.map(x=>({am:amKey(x),v:inp(x.importo)}))}});
+    imp.addEventListener('input',RE.refresh);ms.addEventListener('change',RE.refresh);
+    $('#f-g').onsubmit=async e=>{e.preventDefault();const v=num(imp.value);if(!(v>0)){toast('Importo non valido');return}
+      const R=RE.quote();if(!R.ok){toast(R.err);return}
+      await salvaQuote({data:$('#g-data').value||null,tipo:'spesa',categoria:$('#g-cat').value,descrizione:$('#g-desc').value.trim(),metodo:$('#g-met').value||null},v,R.list,g);
+      close();toast(`Aggiornato: ${eur(v)} · `+R.list.map(q=>MB[q.mese-1].toLowerCase()+' '+n2(q.importo)).join(', '))};
+    $('#g-del').onclick=async()=>{close();if(!await confirmBox('Elimina uscita ripartita',`Eliminare "${esc(s.descrizione)}" da ${eur(tot)} con tutte le sue ${qs.length} quote?`,'Elimina',true))return;for(const x of qs)await del('movimenti/'+x.id);toast('Uscita eliminata')};
+  });
+}
 
 const DEFAULT_URL='https://script.google.com/macros/s/AKfycbzmAef7RJdhtM9Dn0NoSxx6912wUaCX35xGAJ1U8Yl8ChiYU-QmF8G0JEFm39SzCC0_/exec';
 // ---------- dati: Google Sheet tramite Apps Script, con copia locale e coda offline ----------
