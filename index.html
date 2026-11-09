@@ -679,7 +679,7 @@ function curM(){return S.anno===today().getFullYear()?today().getMonth()+1:S.mes
 function sheetAdd(kind='uscita'){
   if(!cats().length&&kind!=='stipendio'&&kind!=='spot'){toast('Crea prima almeno una categoria');location.hash='#categorie';return}
   const tc=topCats();const def=(tc[0]||{}).id;
-  let verso=kind==='uscita'?'uscita':'entrata',sub=kind==='stipendio'?'stipendio':kind==='reso'?'reso':'spot';
+  let verso=kind==='uscita'?'uscita':'entrata',sub=kind==='spot'?'spot':kind==='reso'?'reso':'stipendio';
   const html=`<div class="seg" role="group" aria-label="Verso"><button type="button" data-verso="uscita">Uscita</button><button type="button" data-verso="entrata">Entrata</button></div>
   <div class="seg k-ent" role="group" aria-label="Tipo di entrata"><button type="button" data-sub="stipendio">Stipendio</button><button type="button" data-sub="spot">Spot</button><button type="button" data-sub="reso">Storno / reso</button></div>
   <form id="f-add" novalidate style="display:flex;flex-direction:column;gap:14px">
@@ -797,11 +797,16 @@ function sheetPrev(id){
 function sheetStip(m){
   const doc=S.D.stipendi.find(x=>x.anno===S.anno&&x.mese===m);const prev=nettiAnno(S.D,S.anno-1)[m];
   const cur=doc||{netto:prev?prev.netto:null,lordo:prev?prev.lordo:null,stato:'simulato'};
-  openSheet('Netto '+nomeStip(m).toLowerCase()+' '+S.anno,`<form id="f-st" novalidate style="display:flex;flex-direction:column;gap:14px">${!doc&&prev?`<p class="note">Ora è simulato con il netto ${S.anno-1}: ${eur(prev.netto)}.</p>`:''}<div class="two"><div class="field"><label for="st-n">Netto (€)</label><input id="st-n" class="num" inputmode="decimal" value="${inp(cur.netto)}" data-autofocus></div><div class="field"><label for="st-l">Lordo (€)</label><input id="st-l" class="num" inputmode="decimal" value="${inp(cur.lordo)}"></div></div><div class="field"><label>Stato</label><div class="seg" role="group" aria-label="Stato"><button type="button" data-st="confermato">Confermato</button><button type="button" data-st="simulato">Simulato</button></div></div><div class="actions">${doc?'<button class="pill-btn danger" type="button" id="st-del">Elimina</button>':''}<button class="pill-btn" type="submit">Salva</button></div></form>`,(el,close)=>{
+  openSheet((doc?'Modifica netto ':'Netto ')+S.anno,`<form id="f-st" novalidate style="display:flex;flex-direction:column;gap:14px">${!doc&&prev?`<p class="note">Ora è simulato con il netto ${S.anno-1}: ${eur(prev.netto)}.</p>`:''}<div class="field"><label for="st-m">Mensilità</label><select id="st-m">${stipOptions(m)}</select></div><div class="two"><div class="field"><label for="st-n">Netto (€)</label><input id="st-n" class="num" inputmode="decimal" value="${inp(cur.netto)}" data-autofocus></div><div class="field"><label for="st-l">Lordo (€)</label><input id="st-l" class="num" inputmode="decimal" value="${inp(cur.lordo)}"></div></div><div class="field"><label>Stato</label><div class="seg" role="group" aria-label="Stato"><button type="button" data-st="confermato">Confermato</button><button type="button" data-st="simulato">Simulato</button></div></div><div class="actions">${doc?'<button class="pill-btn danger" type="button" id="st-del">Elimina</button>':''}<button class="pill-btn" type="submit">Salva</button></div></form>`,(el,close)=>{
     let st=doc?(doc.stato||'confermato'):'confermato';const sy=()=>el.querySelectorAll('[data-st]').forEach(x=>x.setAttribute('aria-pressed',x.dataset.st===st));sy();
     el.querySelectorAll('[data-st]').forEach(b=>b.onclick=()=>{st=b.dataset.st;sy()});
     el.querySelector('#f-st').onsubmit=async e=>{e.preventDefault();const n=num(el.querySelector('#st-n').value),l=num(el.querySelector('#st-l').value);if(isNaN(n)){toast('Scrivi il netto');return}
-      await put('stipendi/'+S.anno+'-'+pad(m),{anno:S.anno,mese:m,netto:r2(n),lordo:isNaN(l)?null:r2(l),stato:st});close();toast(`Netto ${nomeStip(m).toLowerCase()}: ${eur(n)} (${st})`)};
+      const nm=+el.querySelector('#st-m').value;
+      if(nm!==m){const other=S.D.stipendi.find(x=>x.anno===S.anno&&x.mese===nm);
+        if(other){close();if(!await confirmBox('Mensilità già presente',`Per ${nomeStip(nm).toLowerCase()} ${S.anno} c'è già un netto di ${eur(+other.netto)}. Lo sostituisco con questo?`,'Sostituisci',true))return}}
+      await put('stipendi/'+S.anno+'-'+pad(nm),{anno:S.anno,mese:nm,netto:r2(n),lordo:isNaN(l)?null:r2(l),stato:st});
+      if(nm!==m&&doc)await del('stipendi/'+doc.id);
+      if(sheetClose)close();toast(nm!==m&&doc?`Netto spostato da ${nomeStip(m).toLowerCase()} a ${nomeStip(nm).toLowerCase()}: ${eur(n)}`:`Netto ${nomeStip(nm).toLowerCase()}: ${eur(n)} (${st})`)};
     if(doc)el.querySelector('#st-del').onclick=async()=>{close();if(await confirmBox('Elimina netto',`Eliminare il netto di ${nomeStip(m).toLowerCase()} ${S.anno}? Tornerà simulato con l'anno prima, se c'è.`,'Elimina',true)){await del('stipendi/'+doc.id);toast('Netto eliminato')}};
   });
 }
@@ -1083,8 +1088,18 @@ function checkRiporto(){
   });
 }
 
+// ---------- aggiornamenti dell'app ----------
+if('serviceWorker' in navigator&&location.protocol==='https:'){
+  const hadSW=!!navigator.serviceWorker.controller;let reloaded=false;
+  navigator.serviceWorker.register('sw.js',{updateViaCache:'none'}).then(reg=>{
+    const chk=()=>reg.update().catch(()=>{});
+    document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible')chk()});
+    setInterval(chk,30*60*1000);
+  }).catch(()=>{});
+  navigator.serviceWorker.addEventListener('controllerchange',()=>{if(hadSW&&!reloaded&&!document.querySelector('.sheet')){reloaded=true;location.reload()}});
+}
+
 route();start();
-if('serviceWorker' in navigator&&location.protocol==='https:')navigator.serviceWorker.register('sw.js');
 </script>
 </body>
 </html>
