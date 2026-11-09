@@ -142,7 +142,7 @@ tr.click{cursor:pointer}
 /* sheet */
 .backdrop{position:fixed;inset:0;background:rgba(5,6,10,.45);z-index:40;display:flex;align-items:flex-end;justify-content:center}
 .backdrop[hidden]{display:none}
-.sheet{background:var(--bg);width:100%;max-width:560px;max-height:92%;overflow-y:auto;border-radius:24px 24px 0 0;padding:12px 16px calc(env(safe-area-inset-bottom) + 20px);display:flex;flex-direction:column;gap:14px}
+.sheet{background:var(--bg);width:100%;max-width:560px;max-height:92%;overscroll-behavior:contain;overflow-y:auto;border-radius:24px 24px 0 0;padding:12px 16px calc(env(safe-area-inset-bottom) + 20px);display:flex;flex-direction:column;gap:14px}
 .grab{width:40px;height:5px;border-radius:3px;background:var(--line);align-self:center}
 .sheet-hd{display:flex;align-items:center;justify-content:space-between;gap:8px}
 .sheet-hd h2{font-size:20px;font-weight:800}
@@ -195,6 +195,10 @@ tr.click{cursor:pointer}
 @keyframes draw{to{stroke-dashoffset:0}}
 @keyframes pop{0%{opacity:0;transform:scale(.2)}70%{opacity:1;transform:scale(1.25)}100%{opacity:1;transform:scale(1)}}
 @media (prefers-reduced-motion: reduce){.splash,.splash .fill{transition:none}.splash .word span,.splash .tag,.splash .ring circle.dot{animation:none;opacity:1;transform:none}.splash .ring circle.arc{animation:none;stroke-dashoffset:0}}
+
+/* altezza fissa dei fogli: non saltano quando cambia il contenuto */
+.sheet.tall{height:88vh;height:88dvh;max-height:88dvh}
+.sheet.compact{max-height:70dvh}
 
 </style>
 </head>
@@ -660,9 +664,9 @@ function vSimula(){
 
 // ---------- fogli ----------
 let sheetClose=null;
-function openSheet(title,html,mount){
+function openSheet(title,html,mount,opts={}){
   const bd=document.getElementById('sheet');
-  bd.innerHTML=`<div class="sheet" role="dialog" aria-modal="true" aria-label="${esc(title)}"><div class="grab"></div><div class="sheet-hd"><h2>${esc(title)}</h2><button class="icon-btn" data-close aria-label="Chiudi">${ICON.close}</button></div>${html}</div>`;
+  bd.innerHTML=`<div class="sheet ${opts.compact?'compact':'tall'}" role="dialog" aria-modal="true" aria-label="${esc(title)}"><div class="grab"></div><div class="sheet-hd"><h2>${esc(title)}</h2><button class="icon-btn" data-close aria-label="Chiudi">${ICON.close}</button></div>${html}</div>`;
   bd.hidden=false;
   const close=()=>{bd.hidden=true;bd.innerHTML='';sheetClose=null};
   sheetClose=close;
@@ -671,7 +675,7 @@ function openSheet(title,html,mount){
   const f=bd.querySelector('[data-autofocus]');if(f)setTimeout(()=>f.focus(),60);
 }
 function confirmBox(title,text,ok='Conferma',danger=false){
-  return new Promise(res=>{openSheet(title,`<p style="margin:0">${text}</p><div class="actions"><button class="pill-btn soft" data-r="0">Annulla</button><button class="pill-btn ${danger?'danger':''}" data-r="1">${esc(ok)}</button></div>`,(el,close)=>{el.querySelectorAll('[data-r]').forEach(b=>b.onclick=()=>{close();res(b.dataset.r==='1')})})});
+  return new Promise(res=>{openSheet(title,`<p style="margin:0">${text}</p><div class="actions"><button class="pill-btn soft" data-r="0">Annulla</button><button class="pill-btn ${danger?'danger':''}" data-r="1">${esc(ok)}</button></div>`,(el,close)=>{el.querySelectorAll('[data-r]').forEach(b=>b.onclick=()=>{close();res(b.dataset.r==='1')})},{compact:true})});
 }
 let toastT=0;function toast(t){const el=document.getElementById('toast');el.textContent=t;el.hidden=false;clearTimeout(toastT);toastT=setTimeout(()=>el.hidden=true,3200)}
 function catOptions(sel){return cats().filter(c=>catAttiva(c,S.anno)||c.id===sel||catHaDati(c.id,S.anno)).map(c=>`<option value="${esc(c.id)}" ${c.id===sel?'selected':''}>${esc(c.nome)}</option>`).join('')}
@@ -1115,7 +1119,7 @@ function checkRiporto(){
   openSheet('Riporto '+Yr,`<p style="margin:0">Il ${prev} si è chiuso con un avanzo di <strong class="num">${sgn(av)}</strong>.</p><p class="note">Riporto di gennaio ${Yr} oggi: <strong class="num">${cur==null?'non impostato':eur(cur)}</strong>. Lo aggiorno con l'avanzo reale di dicembre ${prev}?</p><div class="actions"><button class="pill-btn soft" data-r="no">Lascia così</button><button class="pill-btn" data-r="si">Aggiorna</button></div>`,(el,close)=>{
     el.querySelectorAll('[data-r]').forEach(b=>b.onclick=async()=>{lsSet(key,b.dataset.r);close();
       if(b.dataset.r==='si'){const c=JSON.parse(JSON.stringify(cfg()));c.riporti=c.riporti||{};c.riporti[String(Yr)]=r2(av);await saveConfig(c);toast('Riporto '+Yr+': '+eur(av))}});
-  });
+  },{compact:true});
 }
 
 // ---------- aggiornamenti dell'app ----------
