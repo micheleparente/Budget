@@ -574,7 +574,7 @@ function vRegistro(){
     if(r.k==='stip')return `<button class="item" data-act="editstip" data-k="${r.mm}"><span class="badge in">€</span><span class="grow"><span class="t">Stipendio ${nomeStip(r.mm).toLowerCase()}</span><span class="s">Entrata · netto confermato</span></span><span class="amt pos">+${eur(r.importo)}</span></button>`;
     const x=r.x;const tl=x.tipo==='spot'?'Entrata spot':x.tipo==='reso'?'Storno / reso · '+esc(catName(x.categoria)):esc(catName(x.categoria));
     return `<button class="item" data-act="editmov" data-id="${esc(x.id)}"><span class="badge ${r.entrata?'in':''}">${r.entrata?'+':esc(initials(catName(x.categoria)))}</span><span class="grow"><span class="t">${esc(x.descrizione||catName(x.categoria))}</span><span class="s">${tl}${x.data?' · '+fmtDate(x.data):''}${x.metodo?' · '+esc(x.metodo):''}${x.quota?' · quota '+esc(x.quota):''}</span></span><span class="amt ${r.entrata?'pos':''}">${r.entrata?'+':'−'}${eur(r.importo)}${x.gruppo?`<span class="s" style="display:block;font-weight:500">di ${eur(+x.totale||0)}</span>`:''}</span></button>`};
-  return header('Registro')+chips+`<div class="sum-line"><span>Uscite <strong class="num">${eur(usc)}</strong></span><span>Entrate <strong class="num pos">${eur(ent)}</strong></span><span class="muted">Ancora previste <strong class="num">${eur(pre)}</strong></span></div>`+
+  return header('Registro')+chips+`<a class="banner" href="#previsioni" style="background:var(--chip);color:var(--accent-ink);text-decoration:none"><span><strong>Spese previste e ricorrenti</strong> · affitto, rate, abbonamenti, budget</span>${ICON.chev}</a><div class="sum-line"><span>Uscite <strong class="num">${eur(usc)}</strong></span><span>Entrate <strong class="num pos">${eur(ent)}</strong></span><span class="muted">Ancora previste <strong class="num">${eur(pre)}</strong></span></div>`+
    (budRows&&(F==='tutti'||F==='uscite')?`<p class="sec-title">Budget del mese</p><section class="card tight"><div class="list">${budRows}</div></section>`:'')+
    `<p class="sec-title">Movimenti</p><section class="card tight"><div class="list">${rows.map(rowHtml).join('')||'<p class="empty">Nessun movimento con questo filtro.</p>'}</div></section>`;
 }
@@ -629,7 +629,7 @@ function mesiLabel(imp){const on=imp.map((v,i)=>v!=null?i:-1).filter(i=>i>=0);if
 function vPrevisioni(){
   const pv=S.D.previsioni.filter(p=>p.anno===S.anno);
   const groups=cats().map(c=>({c,items:pv.filter(p=>p.categoria===c.id)})).filter(g=>g.items.length);
-  return header('Previsioni',{month:false,h:'Previsioni '+S.anno})+`<div class="actions"><button class="pill-btn" data-act="newprev">+ Nuova previsione</button></div>
+  return header('Previsioni',{month:false,h:'Previsioni '+S.anno})+`<div class="actions"><button class="pill-btn" data-act="add" data-k="prevista">+ Nuova previsione</button></div>
   <section class="card"><div class="cmp" style="grid-template-columns:auto 1fr;gap:8px 12px"><span class="chip acc">CERTO</span><span class="small">Affitto, telefono, rata auto: diventa pagata da sola il giorno di addebito. Puoi correggerla dopo.</span><span class="chip warn">VARIABILE</span><span class="small">American Express, rate: dal giorno di addebito resta "da confermare" finché non scrivi l'importo vero.</span><span class="chip sim">BUDGET</span><span class="small">Benzina, spesa: un tetto che le spese vere consumano. A mese chiuso conta solo il reale.</span></div></section>`+
    (groups.map(g=>`<p class="sec-title">${esc(g.c.nome)}</p><section class="card tight"><div class="list">${g.items.map(p=>{const s=p.importi.filter(v=>v!=null);const same=s.length&&s.every(v=>+v===+s[0]);return `<button class="item" data-act="editprev" data-id="${esc(p.id)}"><span class="grow"><span class="t">${esc(p.descrizione)}</span><span class="s">${TIPI[p.tipo]||p.tipo} · ${mesiLabel(p.importi)}${p.giorno?' · giorno '+esc(p.giorno):''}</span></span><span class="amt">${s.length?(same?eur(+s[0]):'variabile'):'–'}</span></button>`}).join('')}</div></section>`).join('')||'<p class="empty">Nessuna previsione per il '+S.anno+'.</p>');
 }
@@ -693,15 +693,19 @@ function curM(){return S.anno===today().getFullYear()?today().getMonth()+1:S.mes
 function sheetAdd(kind='uscita'){
   if(!cats().length&&kind!=='stipendio'&&kind!=='spot'){toast('Crea prima almeno una categoria');location.hash='#categorie';return}
   const tc=topCats();const def=(tc[0]||{}).id;
-  let verso=kind==='uscita'?'uscita':'entrata',sub=kind==='spot'?'spot':kind==='reso'?'reso':'stipendio';
-  const html=`<div class="seg" role="group" aria-label="Verso"><button type="button" data-verso="uscita">Uscita</button><button type="button" data-verso="entrata">Entrata</button></div>
+  let verso=kind==='uscita'?'uscita':kind==='prevista'?'prevista':'entrata',sub=kind==='spot'?'spot':kind==='reso'?'reso':'stipendio';
+  const html=`<div class="seg" role="group" aria-label="Tipo di movimento"><button type="button" data-verso="uscita">Uscita</button><button type="button" data-verso="entrata">Entrata</button><button type="button" data-verso="prevista">Prevista</button></div><p class="note k-prevnote">Una spesa che si ripete o che sai già: affitto, rate, abbonamenti, bollo, budget benzina.</p>
   <div class="seg k-ent" role="group" aria-label="Tipo di entrata"><button type="button" data-sub="stipendio">Stipendio</button><button type="button" data-sub="spot">Spot</button><button type="button" data-sub="reso">Storno / reso</button></div>
   <form id="f-add" novalidate style="display:flex;flex-direction:column;gap:14px">
    <div class="field k-stip"><label for="a-sm">Mensilità</label><select id="a-sm">${stipOptions(curM())}</select></div>
    <div class="field"><label for="a-imp" id="a-implbl">Importo (€)</label><input id="a-imp" class="big num" inputmode="decimal" autocomplete="off" placeholder="0,00" data-autofocus></div>
    <div class="field k-stip"><label for="a-lordo">Lordo (€)</label><input id="a-lordo" class="num" inputmode="decimal" placeholder="facoltativo"></div>
-   <div class="field k-cat"><label>Categoria</label><div class="catpick" role="group" aria-label="Categoria">${tc.map(c=>`<button type="button" data-cat="${esc(c.id)}" aria-pressed="${c.id===def}">${esc(c.nome)}</button>`).join('')}</div><select id="a-cat" aria-label="Tutte le categorie">${catOptions(def)}</select></div>
+   <div class="field k-cat"><label>Categoria</label><div class="catpick k-pchips" role="group" aria-label="Categorie ricorrenti">${cats().filter(c=>catAttiva(c,S.anno)&&c.tipo==='fissa').slice(0,8).map(c=>`<button type="button" data-cat="${esc(c.id)}" aria-pressed="false">${esc(c.nome)}</button>`).join('')}</div><div class="catpick k-uchips" role="group" aria-label="Categoria">${tc.map(c=>`<button type="button" data-cat="${esc(c.id)}" aria-pressed="${c.id===def}">${esc(c.nome)}</button>`).join('')}</div><select id="a-cat" aria-label="Tutte le categorie">${catOptions(def)}</select></div>
    <div class="field k-met"><label id="a-metlbl">Metodo di pagamento</label>${metPick(lastMet()||metodi()[0])}</div>
+   <div class="field k-prev"><label>Tipo</label><div class="seg" role="group" aria-label="Tipo di previsione"><button type="button" data-ptipo="certo">Importo certo</button><button type="button" data-ptipo="variabile">Variabile</button><button type="button" data-ptipo="budget">Budget</button></div><p class="note" id="a-ptnote"></p></div>
+   <div class="two k-prev"><div class="field"><label for="a-pda">Dal mese</label><select id="a-pda">${meseOptions(curM())}</select></div><div class="field"><label for="a-pa">Fino a</label><select id="a-pa">${meseOptions(12)}</select></div></div>
+   <div class="two k-prev"><div class="field"><label for="a-pf">Frequenza</label><select id="a-pf"><option value="1">Ogni mese</option><option value="2">Ogni 2 mesi</option><option value="3">Ogni 3 mesi</option><option value="6">Ogni 6 mesi</option><option value="12">Una volta</option></select></div><div class="field k-pg"><label for="a-pg">Giorno di addebito</label><input id="a-pg" inputmode="numeric" placeholder="es. 5"></div></div>
+   <p class="note k-prev" id="a-pprev"></p>
    <div class="field k-desc"><label for="a-desc">Descrizione</label><input id="a-desc" autocomplete="off" placeholder="Es. Benzina, Cena, Reso Zalando…"></div>
    <div class="two k-date"><div class="field"><label for="a-data">Data</label><input id="a-data" type="date" value="${isoToday()}"></div><div class="field"><label for="a-mese">Mese di addebito</label><select id="a-mese">${meseOptions(curM())}</select></div></div>
    <div class="field k-rip"><label>Ripartizione</label><div id="a-ripbox"></div></div>
@@ -713,11 +717,19 @@ function sheetAdd(kind='uscita'){
     const sync=()=>{
       el.querySelectorAll('[data-verso]').forEach(b=>b.setAttribute('aria-pressed',b.dataset.verso===verso));
       el.querySelectorAll('[data-sub]').forEach(b=>b.setAttribute('aria-pressed',b.dataset.sub===sub));
-      const u=verso==='uscita',st=!u&&sub==='stipendio';
+      const pv=verso==='prevista',u=verso==='uscita',st=verso==='entrata'&&sub==='stipendio';
       const show=(c,v)=>el.querySelectorAll(c).forEach(x=>x.hidden=!v);
-      show('.k-ent',!u);show('.k-met',!st);$('#a-metlbl').textContent=u?'Metodo di pagamento':'Accreditato su';show('.k-stip',st);show('.k-cat',u||sub==='reso');show('.k-desc',!st);show('.k-date',!st);show('.k-rip',u);show('.k-resonote',!u&&sub==='reso');
-      $('#a-implbl').textContent=st?'Netto (€)':'Importo (€)';
-    };sync();
+      show('.k-ent',verso==='entrata');show('.k-pchips',pv);show('.k-uchips',!pv);show('.k-prevnote',pv);show('.k-prev',pv);show('.k-met',!st);$('#a-metlbl').textContent=u||pv?'Metodo di pagamento':'Accreditato su';show('.k-stip',st);show('.k-cat',u||pv||sub==='reso');show('.k-desc',!st);show('.k-date',!st&&!pv);show('.k-rip',u);show('.k-resonote',verso==='entrata'&&sub==='reso');
+      $('#a-implbl').textContent=st?'Netto (€)':pv?(ptipo==='budget'?'Budget al mese (€)':'Importo per addebito (€)'):'Importo (€)';
+      el.querySelectorAll('[data-ptipo]').forEach(b=>b.setAttribute('aria-pressed',b.dataset.ptipo===ptipo));$('#a-ptnote').textContent=PTN[ptipo];show('.k-pg',pv&&ptipo!=='budget');
+      if(pv)prevUpd();
+    };
+    let ptipo='certo';const PTN={certo:'Diventa pagata da sola nel giorno di addebito; puoi correggerla dopo.',variabile:'Dal giorno di addebito resta "da confermare" finché non scrivi l\'importo vero.',budget:'Tetto mensile che le spese vere consumano. A mese chiuso conta solo il reale.'};
+    const prevMesi=()=>{const da=+$('#a-pda').value,a=+$('#a-pa').value,f=+$('#a-pf').value;const out=[];if(a<da)return out;for(let m=da;m<=a;m+=f){out.push(m);if(f===12)break}return out};
+    const prevUpd=()=>{const ms_=prevMesi(),v=num($('#a-imp').value);$('#a-pprev').textContent=!ms_.length?'"Fino a" deve venire dopo "Dal mese".':`${ms_.length} ${ms_.length===1?'addebito':'addebiti'} nel ${S.anno}: ${ms_.map(m=>MB[m-1].toLowerCase()).join(', ')}${v>0?` · totale ${eur(r2(v*ms_.length))}`:''}.`};
+    el.querySelectorAll('[data-ptipo]').forEach(b=>b.onclick=()=>{ptipo=b.dataset.ptipo;if(ptipo==='budget'){$('#a-pf').value='1'}sync()});
+    ['#a-pda','#a-pa','#a-pf'].forEach(q=>$(q).addEventListener('change',prevUpd));$('#a-imp').addEventListener('input',()=>{if(verso==='prevista')prevUpd()});
+    sync();
     el.querySelectorAll('[data-verso]').forEach(b=>b.onclick=()=>{verso=b.dataset.verso;sync()});
     el.querySelectorAll('[data-sub]').forEach(b=>b.onclick=()=>{sub=b.dataset.sub;sync()});
     let met=lastMet()||metodi()[0];
@@ -731,7 +743,11 @@ function sheetAdd(kind='uscita'){
     imp.addEventListener('input',RE.refresh);ms.addEventListener('change',RE.refresh);
     $('#f-add').onsubmit=async e=>{e.preventDefault();if(!(verso==='entrata'&&sub==='stipendio'))setLastMet(met);
       const v=num(imp.value);if(!(v>0)){imp.focus();toast('Scrivi un importo maggiore di zero');return}
-      const desc=$('#a-desc').value.trim();const mese=+ms.value;const data=d.value||null;
+      const desc=$('#a-desc').value.trim();
+      if(verso==='prevista'){const ms_=prevMesi();if(!ms_.length){toast('"Fino a" deve venire dopo "Dal mese"');return}
+        const importi=Array(12).fill(null);ms_.forEach(m=>importi[m-1]=r2(v));const g=parseInt($('#a-pg').value,10);const cat=$('#a-cat').value;
+        await put('previsioni/'+newId(),{anno:S.anno,categoria:cat,descrizione:desc||catName(cat),tipo:ptipo,giorno:ptipo!=='budget'&&g>=1&&g<=31?g:null,metodo:met,importi,effettivi:{}});
+        close();toast(`Prevista: ${desc||catName(cat)} ${eur(v)} · ${mesiLabel(importi)}`);return}const mese=+ms.value;const data=d.value||null;
       if(verso==='entrata'&&sub==='stipendio'){const m=+$('#a-sm').value,l=num($('#a-lordo').value);
         await put('stipendi/'+S.anno+'-'+pad(m),{anno:S.anno,mese:m,netto:r2(v),lordo:isNaN(l)?null:r2(l),stato:'confermato'});close();toast(`Inserito: stipendio ${nomeStip(m).toLowerCase()} ${eur(v)} netto (confermato)`);return}
       if(verso==='entrata'&&sub==='spot'){await put('movimenti/'+newId('movimenti'),{anno:S.anno,mese,data,tipo:'spot',descrizione:desc||'Entrata',importo:r2(v),metodo:met});close();toast(`Inserito: +${eur(v)} entrata spot · ${MESI[mese-1].toLowerCase()}`);return}
