@@ -174,10 +174,20 @@ tr.click{cursor:pointer}
 .field select#reg-cat{height:44px;font-size:15px}
 [hidden]{display:none!important}
 .item .s{white-space:normal;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
+/* schermata di avvio */
+.splash{position:fixed;inset:0;z-index:100;background:var(--bg);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:22px;padding:24px;transition:opacity .35s ease}
+.splash.out{opacity:0;pointer-events:none}
+.splash .logo{width:84px;height:84px;border-radius:22px;background:var(--accent);display:flex;align-items:center;justify-content:center;box-shadow:0 10px 30px color-mix(in srgb,var(--accent) 35%,transparent)}
+.splash h1{font-size:24px;font-weight:800;letter-spacing:-.4px;margin:0}
+.splash .track{width:min(240px,70vw);height:6px;border-radius:3px;background:var(--soft);overflow:hidden}
+.splash .fill{height:100%;width:0;border-radius:3px;background:var(--accent);transition:width .4s ease}
+.splash p{margin:0;font-size:14px;color:var(--sub);min-height:20px;text-align:center}
+@media (prefers-reduced-motion: reduce){.splash,.splash .fill{transition:none}}
 
 </style>
 </head>
 <body>
+<div class="splash" id="splash" role="status" aria-live="polite"><div class="logo" aria-hidden="true"><svg width="48" height="48" viewBox="0 0 48 48" fill="none"><circle cx="24" cy="24" r="15" stroke="rgba(255,255,255,.35)" stroke-width="5"/><path d="M24 9a15 15 0 1 1-15 15" stroke="#fff" stroke-width="5" stroke-linecap="round"/><circle cx="24" cy="24" r="3.5" fill="#fff"/></svg></div><h1>Budget</h1><div class="track" aria-hidden="true"><div class="fill" id="splash-fill"></div></div><p id="splash-msg">Avvio…</p></div>
 <main id="view" aria-live="polite"></main>
 <nav class="tabs" aria-label="Sezioni"><div class="in">
 <a href="#home" data-v="home"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 10.5L12 3l9 7.5V20a1 1 0 0 1-1 1h-5v-6h-6v6H4a1 1 0 0 1-1-1z"/></svg>Home</a>
@@ -981,7 +991,8 @@ async function call(method,body){
   const j=await r.json();if(!j.ok)throw new Error(j.error||'errore');return j;
 }
 async function flush(){
-  if(!SYNC.api||SYNC.busy)return;
+  if(!SYNC.api)return;
+  if(SYNC.busy)return new Promise(r=>setTimeout(()=>r(flush()),400));
   SYNC.busy=true;
   try{
     if(SYNC.queue.length){const sent=SYNC.queue.slice();const j=await call('POST',{ops:sent});
@@ -1003,10 +1014,12 @@ async function put(path,data){
 }
 async function del(path){const [col,id]=path.split('/');await enqueue([{op:'delete',col,id}])}
 async function saveConfig(c){await put('config/main',c)}
+let started=false;
 function start(){
   if(SYNC.raw)publish();
-  if(!SYNC.api){S.ready=true;S.view='collega';schedule();return}
-  flush();
+  if(!started){started=true;splashStart()}
+  if(!SYNC.api){S.ready=true;S.view='collega';schedule();splashEnd();return}
+  flush().then(()=>splashEnd(SYNC.err?(SYNC.raw?'Non riesco a sincronizzare: ti mostro i dati salvati sul telefono':'Non riesco a raggiungere i dati'):null));
   setInterval(()=>{if(document.visibilityState==='visible')flush()},60000);
   document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible')flush()});
   window.addEventListener('online',()=>{SYNC.online=true;flush();schedule()});
@@ -1014,7 +1027,7 @@ function start(){
 }
 async function collega(url,key){
   SYNC.api={url:url.trim(),key:key.trim()};
-  try{const j=await call('GET');lsSet(LS.api,SYNC.api);SYNC.raw=applyLocal(j.data,SYNC.queue);lsSet(LS.cache,SYNC.raw);SYNC.last=new Date();SYNC.err=null;publish();start();return true}
+  try{const j=await call('GET');lsSet(LS.api,SYNC.api);SYNC.raw=applyLocal(j.data,SYNC.queue);lsSet(LS.cache,SYNC.raw);SYNC.last=new Date();SYNC.err=null;publish();setInterval(()=>{if(document.visibilityState==='visible')flush()},60000);document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible')flush()});checkRiporto();return true}
   catch(e){SYNC.api=lsGet(LS.api,null);throw e}
 }
 function syncLine(){
@@ -1024,6 +1037,38 @@ function syncLine(){
   if(SYNC.err)return `Sincronizzazione non riuscita (${SYNC.err}) · ${q} in attesa`;
   if(SYNC.busy||q)return 'Sincronizzo…';
   return SYNC.last?'Sincronizzato alle '+SYNC.last.toLocaleTimeString('it-IT',{hour:'2-digit',minute:'2-digit'}):'Collegato';
+}
+
+// ---------- schermata di avvio ----------
+const SPL={t0:Date.now(),done:false,timer:null};
+function splashStep(pct,msg){const f=document.getElementById('splash-fill'),m=document.getElementById('splash-msg');if(f)f.style.width=pct+'%';if(m&&msg)m.textContent=msg}
+function splashStart(){
+  splashStep(15,SYNC.api?'Collego i tuoi dati…':'Avvio…');
+  let p=15;SPL.timer=setInterval(()=>{p=Math.min(88,p+(88-p)*0.12);splashStep(p)},250);
+  setTimeout(()=>{if(!SPL.done&&SYNC.raw)splashEnd(navigator.onLine?'Rete lenta: ti mostro i dati salvati sul telefono':'Offline: ti mostro i dati salvati sul telefono')},9000);
+  setTimeout(()=>{if(!SPL.done)splashEnd()},15000);
+}
+function splashEnd(msg){
+  if(SPL.done)return;SPL.done=true;clearInterval(SPL.timer);
+  splashStep(100,msg||'Pronto');
+  const wait=Math.max(0,700-(Date.now()-SPL.t0));
+  setTimeout(()=>{const el=document.getElementById('splash');if(!el)return;el.classList.add('out');setTimeout(()=>el.remove(),400);checkRiporto()},wait+(msg?900:250));
+}
+// ---------- riporto: proposta al primo accesso del nuovo anno ----------
+function checkRiporto(){
+  if(!SYNC.api||SYNC.err||!S.ready)return;
+  const Yr=today().getFullYear(),key='budget-riporto-'+Yr;
+  if(lsGet(key,null))return;
+  const prev=Yr-1;
+  const hasPrev=S.D.movimenti.some(x=>x.anno===prev)||S.D.previsioni.some(x=>x.anno===prev)||S.D.stipendi.some(x=>x.anno===prev);
+  if(!hasPrev)return;
+  const av=computeYear(S.D,prev,today()).mesi[11].avanzo;
+  const cur=(cfg().riporti||{})[String(Yr)];
+  if(cur!=null&&Math.abs(cur-av)<0.005){lsSet(key,'ok');return}
+  openSheet('Riporto '+Yr,`<p style="margin:0">Il ${prev} si è chiuso con un avanzo di <strong class="num">${sgn(av)}</strong>.</p><p class="note">Riporto di gennaio ${Yr} oggi: <strong class="num">${cur==null?'non impostato':eur(cur)}</strong>. Lo aggiorno con l'avanzo reale di dicembre ${prev}?</p><div class="actions"><button class="pill-btn soft" data-r="no">Lascia così</button><button class="pill-btn" data-r="si">Aggiorna</button></div>`,(el,close)=>{
+    el.querySelectorAll('[data-r]').forEach(b=>b.onclick=async()=>{lsSet(key,b.dataset.r);close();
+      if(b.dataset.r==='si'){const c=JSON.parse(JSON.stringify(cfg()));c.riporti=c.riporti||{};c.riporti[String(Yr)]=r2(av);await saveConfig(c);toast('Riporto '+Yr+': '+eur(av))}});
+  });
 }
 
 route();start();
