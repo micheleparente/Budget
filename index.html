@@ -709,7 +709,7 @@ function vRegistro(){
   rows=rows.filter(r=>F==='tutti'||(F==='uscite'&&!r.entrata)||(F==='entrate'&&r.entrata)||(F==='previsti'&&r.stato==='previsto')||(F==='daconf'&&r.stato==='daconfermare'));
   if(S.regCat!=='tutte')rows=rows.filter(r=>r.cat===S.regCat);
   if(S.regMet!=='tutti')rows=rows.filter(r=>r.met===S.regMet);
-  rows.forEach((r,i)=>r._i=i);rows.sort((a,b)=>{const da=/^\d{4}-\d{2}-\d{2}/.test(a.data||'')?a.data.slice(0,10):'',db=/^\d{4}-\d{2}-\d{2}/.test(b.data||'')?b.data.slice(0,10):'';return da.localeCompare(db)||a._i-b._i});
+  rows.forEach((r,i)=>r._i=i);rows.sort((a,b)=>{const da=/^\d{4}-\d{2}-\d{2}/.test(a.data||'')?a.data.slice(0,10):'',db=/^\d{4}-\d{2}-\d{2}/.test(b.data||'')?b.data.slice(0,10):'';if(!da!==!db)return da?1:-1;return db.localeCompare(da)||a._i-b._i});
   const all=righeMese(S.anno,S.mese);
   const usc=r2(all.filter(r=>!r.entrata&&r.stato==='effettivo').reduce((a,r)=>a+r.importo,0));
   const ent=r2(all.filter(r=>r.entrata).reduce((a,r)=>a+r.importo,0));const entSim=all.some(r=>r.k==='stip'&&r.stato!=='effettivo');
