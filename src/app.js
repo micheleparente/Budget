@@ -454,7 +454,7 @@ function vCategorie(){
 }
 function simData(){
   const D=Object.assign({},S.D);
-  D.previsioni=S.D.previsioni.concat(S.sim.extra.map((e,i)=>({id:'sim'+i,anno:S.anno,categoria:e.categoria,descrizione:e.descrizione,tipo:'variabile',importi:e.importi})));
+  D.previsioni=S.D.previsioni.concat(S.sim.extra.map((e,i)=>({id:'sim'+i,anno:e.anno||S.anno,categoria:e.categoria,descrizione:e.descrizione,tipo:'variabile',importi:e.importi})));
   const ov=Object.entries(S.sim.netti).map(([m,v])=>({anno:S.anno,mese:+m,netto:v,lordo:null,stato:'simulato'}));
   D.stipendi=S.D.stipendi.filter(s=>!(s.anno===S.anno&&S.sim.netti[s.mese]!=null)).concat(ov);
   return D;
@@ -462,12 +462,14 @@ function simData(){
 function vSimula(){
   if(!cats().length)return header('Simulatore')+onboarding();
   const a=Y(),b=Y(S.anno,simData());const mi=S.mese-1;
-  const has=S.sim.extra.length||Object.keys(S.sim.netti).length;
+  const has=S.sim.extra.length||Object.keys(S.sim.netti).length,dopo=S.sim.extra.some(e=>(e.anno||S.anno)>S.anno);
+  const gruppi=[];S.sim.extra.forEach((e,i)=>{const k=e.g||('i'+i);let G=gruppi.find(x=>x.k===k);if(!G)gruppi.push(G={k,e,parti:[]});G.parti.push(e)});
   const cmp=(l,x,y)=>`<span>${l}</span><span class="num muted">${sgn(x)}</span><span class="num ${y<0?'neg':'pos'}"><strong>${sgn(y)}</strong></span>`;
-  const changed=a.mesi.map((m,i)=>({m:i+1,a:m.saldo,b:b.mesi[i].saldo})).filter(x=>Math.abs(x.a-x.b)>0.004);
+  const changed=a.mesi.map((m,i)=>({m:i+1,a:m.saldo,b:b.mesi[i].saldo,l:MB[i]})).filter(x=>Math.abs(x.a-x.b)>0.004);
+  if(S.sim.extra.some(e=>(e.anno||S.anno)>S.anno)){const a2=Y(S.anno+1),b2=Y(S.anno+1,simData()),yy=String(S.anno+1).slice(2);a2.mesi.forEach((m,i)=>{if(Math.abs(m.saldo-b2.mesi[i].saldo)>0.004)changed.push({m:i+1,a:m.saldo,b:b2.mesi[i].saldo,l:MB[i]+' '+yy})})}
   return header('Simulatore')+
-  `<section class="card"><h2>Effetto</h2><div class="cmp"><span class="h"></span><span class="h">Oggi</span><span class="h">Simulato</span>${cmp('Saldo '+MESI[mi],a.mesi[mi].saldo,b.mesi[mi].saldo)}${cmp('Avanzo a '+MB[mi],a.mesi[mi].avanzo,b.mesi[mi].avanzo)}${cmp('Fine anno',a.mesi[11].avanzo,b.mesi[11].avanzo)}${cmp('Stipendio standard',a.std,b.std)}</div>${changed.length?`<p class="note">Mesi toccati: ${changed.map(x=>MB[x.m-1]+' '+sgn(r2(x.b-x.a))).join(' · ')}</p>`:'<p class="note">Aggiungi una spesa o un netto ipotetico: i dati reali non cambiano finché non confermi.</p>'}</section>`+
-  `<section class="card tight"><div class="row-head" style="padding-top:12px"><h2>Ipotesi</h2></div><div class="list">${S.sim.extra.map((e,i)=>`<div class="item"><span class="grow"><span class="t">${esc(e.descrizione)}</span><span class="s">${esc(catName(e.categoria))} · ${mesiLabel(e.importi)}</span></span><span class="amt">${eur(e.importi.reduce((x,v)=>x+(+v||0),0))}</span><button class="ghost" data-act="simdel" data-k="${i}" aria-label="Togli ipotesi">${ICON.close}</button></div>`).join('')}${Object.entries(S.sim.netti).map(([m,v])=>`<div class="item"><span class="grow"><span class="t">Netto ${nomeStip(+m)}</span><span class="s">Ipotetico</span></span><span class="amt">${eur(+v)}</span><button class="ghost" data-act="simdeln" data-k="${m}" aria-label="Togli netto ipotetico">${ICON.close}</button></div>`).join('')||'<p class="empty">Nessuna ipotesi.</p>'}</div></section>`+
+  `<section class="card"><h2>Effetto</h2><div class="cmp"><span class="h"></span><span class="h">Oggi</span><span class="h">Simulato</span>${cmp('Saldo '+MESI[mi],a.mesi[mi].saldo,b.mesi[mi].saldo)}${cmp('Avanzo a '+MB[mi],a.mesi[mi].avanzo,b.mesi[mi].avanzo)}${cmp('Fine anno '+S.anno,a.mesi[11].avanzo,b.mesi[11].avanzo)}${dopo?cmp('Fine anno '+(S.anno+1),Y(S.anno+1).mesi[11].avanzo,Y(S.anno+1,simData()).mesi[11].avanzo):''}${cmp('Stipendio standard',a.std,b.std)}</div>${changed.length?`<p class="note">Mesi toccati: ${changed.map(x=>x.l+' '+sgn(r2(x.b-x.a))).join(' · ')}</p>`:'<p class="note">Aggiungi una spesa o un netto ipotetico: i dati reali non cambiano finché non confermi.</p>'}</section>`+
+  `<section class="card tight"><div class="row-head" style="padding-top:12px"><h2>Ipotesi</h2></div><div class="list">${gruppi.map(G=>`<div class="item"><span class="grow"><span class="t">${esc(G.e.descrizione)}</span><span class="s">${esc(catName(G.e.categoria))} · ${G.parti.map(x=>mesiLabel(x.importi)+' '+(x.anno||S.anno)).join(', ')}</span></span><span class="amt">${eur(r2(G.parti.reduce((t,x)=>t+x.importi.reduce((y,v)=>y+(+v||0),0),0)))}</span><button class="ghost" data-act="simdel" data-k="${esc(G.k)}" aria-label="Togli ipotesi">${ICON.close}</button></div>`).join('')}${Object.entries(S.sim.netti).map(([m,v])=>`<div class="item"><span class="grow"><span class="t">Netto ${nomeStip(+m)}</span><span class="s">Ipotetico</span></span><span class="amt">${eur(+v)}</span><button class="ghost" data-act="simdeln" data-k="${m}" aria-label="Togli netto ipotetico">${ICON.close}</button></div>`).join('')}${has?'':'<p class="empty">Nessuna ipotesi.</p>'}</div></section>`+
   `<div class="actions"><button class="pill-btn soft" data-act="simspesa">+ Spesa ipotetica</button><button class="pill-btn soft" data-act="simnetto">+ Netto ipotetico</button></div>`+
   (has?`<div class="actions"><button class="pill-btn danger" data-act="simreset">Annulla tutto</button><button class="pill-btn" data-act="simok">Conferma e salva</button></div>`:'');
 }
@@ -726,9 +728,11 @@ function sheetCat(id){
 }
 async function moveCat(id,dir){const cf=JSON.parse(JSON.stringify(cfg()));const arr=cf.categorie.sort((a,b)=>a.ordine-b.ordine);const i=arr.findIndex(c=>c.id===id);const j=i+dir;if(j<0||j>=arr.length)return;[arr[i],arr[j]]=[arr[j],arr[i]];arr.forEach((c,k)=>c.ordine=k);cf.categorie=arr;await saveConfig(cf)}
 function sheetSimSpesa(){
-  openSheet('Spesa ipotetica',`<form id="f-ss" novalidate style="display:flex;flex-direction:column;gap:14px"><div class="field"><label for="ss-imp">Importo (€)</label><input id="ss-imp" class="big num" inputmode="decimal" placeholder="0,00" data-autofocus></div><div class="field"><label for="ss-desc">Descrizione</label><input id="ss-desc" placeholder="Es. Nuovo telefono"></div><div class="field"><label for="ss-cat">Categoria</label><select id="ss-cat">${catOptions((topCats()[0]||{}).id)}</select></div><div class="two"><div class="field"><label for="ss-m">Dal mese</label><select id="ss-m">${meseOptions(S.mese)}</select></div><div class="field"><label for="ss-n">Per mesi</label><select id="ss-n">${Array.from({length:12},(_,i)=>`<option value="${i+1}">${i+1}</option>`).join('')}</select></div></div><div class="field"><label for="ss-mod">Come</label><select id="ss-mod"><option value="rip">Ripartisci l'importo sui mesi</option><option value="rep">Ripeti l'importo ogni mese</option></select></div><div class="actions"><button class="pill-btn" type="submit">Aggiungi alla simulazione</button></div></form>`,(el,close)=>{
-    el.querySelector('#f-ss').onsubmit=e=>{e.preventDefault();const v=num(el.querySelector('#ss-imp').value);if(!(v>0)){toast('Scrivi un importo');return}const from=+el.querySelector('#ss-m').value-1,n=Math.min(+el.querySelector('#ss-n').value,12-from),rep=el.querySelector('#ss-mod').value==='rep';const imp=Array(12).fill(null);const q=rep?v:r2(v/n);for(let i=0;i<n;i++)imp[from+i]=rep?r2(v):(i===n-1?r2(v-q*(n-1)):q);
-      const cat=el.querySelector('#ss-cat').value;S.sim.extra.push({categoria:cat,descrizione:el.querySelector('#ss-desc').value.trim()||catName(cat),importi:imp});close();render()};
+  openSheet('Spesa ipotetica',`<form id="f-ss" novalidate style="display:flex;flex-direction:column;gap:14px"><div class="field"><label for="ss-imp">Importo (€)</label><input id="ss-imp" class="big num" inputmode="decimal" placeholder="0,00" data-autofocus></div><div class="field"><label for="ss-desc">Descrizione</label><input id="ss-desc" placeholder="Es. Nuovo telefono"></div><div class="field"><label for="ss-cat">Categoria</label><select id="ss-cat">${catOptions((topCats()[0]||{}).id)}</select></div><div class="two"><div class="field"><label for="ss-m">Dal mese</label><select id="ss-m">${meseOptions(S.mese)}</select></div><div class="field"><label for="ss-n">Per mesi</label><select id="ss-n">${Array.from({length:24},(_,i)=>`<option value="${i+1}">${i+1}</option>`).join('')}</select></div></div><div class="field"><label for="ss-mod">Come</label><select id="ss-mod"><option value="rip">Ripartisci l'importo sui mesi</option><option value="rep">Ripeti l'importo ogni mese</option></select></div><div class="actions"><button class="pill-btn" type="submit">Aggiungi alla simulazione</button></div></form>`,(el,close)=>{
+    el.querySelector('#f-ss').onsubmit=e=>{e.preventDefault();const v=num(el.querySelector('#ss-imp').value);if(!(v>0)){toast('Scrivi un importo');return}const from=+el.querySelector('#ss-m').value-1,n=+el.querySelector('#ss-n').value,rep=el.querySelector('#ss-mod').value==='rep';const q=rep?v:r2(v/n);
+      const cat=el.querySelector('#ss-cat').value,desc=el.querySelector('#ss-desc').value.trim()||catName(cat),g='g'+Date.now();const per={};
+      for(let i=0;i<n;i++){const k=from+i,a=S.anno+Math.floor(k/12),mm=k%12;(per[a]=per[a]||Array(12).fill(null))[mm]=rep?r2(v):(i===n-1?r2(v-q*(n-1)):q)}
+      Object.keys(per).forEach(a=>S.sim.extra.push({g,anno:+a,categoria:cat,descrizione:desc,importi:per[a]}));close();render()};
   });
 }
 function sheetSimNetto(){
@@ -739,7 +743,7 @@ function sheetSimNetto(){
 async function simConfirm(){
   const n=S.sim.extra.length,k=Object.keys(S.sim.netti).length;
   if(!await confirmBox('Salva la simulazione',`Diventano dati reali: ${n} ${n===1?'previsione':'previsioni'} (tipo variabile) e ${k} ${k===1?'netto':'netti'} (stato simulato). Confermi?`,'Salva'))return;
-  for(const e of S.sim.extra)await put('previsioni/'+newId('previsioni'),{anno:S.anno,categoria:e.categoria,descrizione:e.descrizione,tipo:'variabile',giorno:null,importi:e.importi,effettivi:{}});
+  for(const e of S.sim.extra)await put('previsioni/'+newId('previsioni'),{anno:e.anno||S.anno,categoria:e.categoria,descrizione:e.descrizione,tipo:'variabile',giorno:null,importi:e.importi,effettivi:{}});
   for(const [m,v] of Object.entries(S.sim.netti)){const s=S.D.stipendi.find(x=>x.anno===S.anno&&x.mese===+m);await put('stipendi/'+S.anno+'-'+pad(+m),{anno:S.anno,mese:+m,netto:v,lordo:s?s.lordo:null,stato:s&&s.stato==='confermato'?'confermato':'simulato'})}
   S.sim={extra:[],netti:{}};render();toast('Simulazione salvata nei dati');
 }
@@ -824,7 +828,7 @@ document.addEventListener('click',async e=>{
     case 'annullaanno':annullaAnno(+k);break;
     case 'simspesa':sheetSimSpesa();break;
     case 'simnetto':sheetSimNetto();break;
-    case 'simdel':S.sim.extra.splice(+k,1);render();break;
+    case 'simdel':S.sim.extra=S.sim.extra.filter((e,i)=>(e.g||('i'+i))!==k);render();break;
     case 'simdeln':delete S.sim.netti[k];render();break;
     case 'simreset':S.sim={extra:[],netti:{}};render();break;
     case 'simok':simConfirm();break;
