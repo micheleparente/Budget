@@ -528,6 +528,7 @@ function ecatOptions(sel){return '<option value="">Nessuna</option>'+catEnt().ma
 function catName(id){const c=cats().find(c=>c.id===id);return c?c.nome:(id||'')}
 function Y(anno=S.anno,D=S.D){return computeYear(D,anno,today())}
 function anni(){const t=today().getFullYear();const s=new Set([t,t+1,S.anno]);S.D.stipendi.forEach(x=>s.add(x.anno));S.D.previsioni.forEach(x=>s.add(x.anno));S.D.movimenti.forEach(x=>s.add(x.anno));return [...s].sort()}
+function previsionaleCreato(a){return S.D.previsioni.some(p=>p.anno===a&&/^Stima da /.test(p.descrizione||''))||S.D.movimenti.some(p=>p.anno===a&&!p.gruppo)}
 function haDati(a){return S.D.previsioni.some(p=>p.anno===a)||S.D.movimenti.some(p=>p.anno===a)}
 
 function clean(o){const d=Object.assign({},o);delete d.id;return d}
@@ -653,7 +654,7 @@ function vDashboard(){
   const conf=`<section class="card" aria-label="Confronti"><h2>Spese di ${MESI[mi]} a confronto</h2><div class="cmp"><span class="h">Rispetto a</span><span class="h">Spese</span><span class="h">Diff.</span>${cr('Mese prima',prevM.spese)}${cr(MESI[mi]+' '+(S.anno-1),sameLY.spese)}${cr('Media mesi chiusi',medS)}</div></section>`;
   // previsionale
   const nx=S.anno+1;let nextCard;
-  if(haDati(nx)){const yn=Y(nx);nextCard=`<section class="card"><div class="row-head"><div><p class="eyebrow">Previsionale ${nx}</p><span class="num ${yn.mesi[11].avanzo<0?'neg':'pos'}" style="font-size:22px;font-weight:800">${sgn(yn.mesi[11].avanzo)}</span><p class="note">Avanzo stimato a fine ${nx} · spese ${eur(yn.mesi.reduce((a,x)=>a+x.spese,0))}</p></div><button class="pill-btn soft" data-act="anno" data-k="${nx}">Apri</button></div></section>`}
+  if(previsionaleCreato(nx)){const yn=Y(nx);nextCard=`<section class="card"><div class="row-head"><div><p class="eyebrow">Previsionale ${nx}</p><span class="num ${yn.mesi[11].avanzo<0?'neg':'pos'}" style="font-size:22px;font-weight:800">${sgn(yn.mesi[11].avanzo)}</span><p class="note">Avanzo stimato a fine ${nx} · spese ${eur(yn.mesi.reduce((a,x)=>a+x.spese,0))}</p></div><button class="pill-btn soft" data-act="anno" data-k="${nx}">Apri</button></div></section>`}
   else nextCard=`<section class="card"><div class="row-head"><div><p class="eyebrow">Previsionale ${nx}</p><p class="note">Copia previsioni e netti del ${S.anno} come simulazione.</p></div><button class="pill-btn soft" data-act="creaanno" data-k="${nx}">Crea</button></div></section>`;
   return header('Dashboard',{badge:false})+banner+saldiChart(y)+proj+scad+dove+conf+avanzoChart(y)+nextCard;
 }
@@ -783,7 +784,7 @@ function vPrevisioni(){
   const groups=cats().map(c=>({c,items:pv.filter(p=>p.categoria===c.id)})).filter(g=>g.items.length);
   return header('Previsioni',{month:false,h:'Previsioni '+S.anno})+`<div class="actions"><button class="pill-btn" data-act="add" data-k="prevista">+ Nuova previsione</button></div>
   <section class="card"><div class="cmp" style="grid-template-columns:auto 1fr;gap:8px 12px"><span class="chip acc">CERTO</span><span class="small">Affitto, telefono, rata auto: diventa pagata da sola il giorno di addebito. Puoi correggerla dopo.</span><span class="chip warn">VARIABILE</span><span class="small">American Express, rate: dal giorno di addebito resta "da confermare" finché non scrivi l'importo vero.</span><span class="chip sim">BUDGET</span><span class="small">Benzina, spesa: un tetto che le spese vere consumano. A mese chiuso conta solo il reale.</span></div></section>`+
-   (groups.map(g=>`<p class="sec-title">${esc(g.c.nome)}</p><section class="card tight"><div class="list">${g.items.map(p=>{const s=p.importi.filter(v=>v!=null);const same=s.length&&s.every(v=>+v===+s[0]);return `<button class="item" data-act="editprev" data-id="${esc(p.id)}"><span class="grow"><span class="t">${esc(p.descrizione)}</span><span class="s">${TIPI[p.tipo]||p.tipo}${p.scadenza?' · scadenza':''} · ${mesiLabel(p.importi)}${p.giorno?' · giorno '+esc(p.giorno):''}</span></span><span class="amt">${s.length?(same?eur(+s[0]):'variabile'):'–'}</span></button>`}).join('')}</div></section>`).join('')||'<p class="empty">Nessuna previsione per il '+S.anno+'.</p>');
+   (groups.map(g=>`<p class="sec-title">${esc(g.c.nome)}</p><section class="card tight"><div class="list">${g.items.map(p=>{const s=p.importi.filter(v=>v!=null);const same=s.length&&s.every(v=>+v===+s[0]);return `<button class="item" data-act="editprev" data-id="${esc(p.id)}"><span class="grow"><span class="t">${esc(p.descrizione)}</span><span class="s">${TIPI[p.tipo]||p.tipo}${p.scadenza?' · scadenza':''} · ${mesiLabel(p.importi)}${p.serie&&serieRighe(p).length>1?` · fino a ${MB[serieFine(p).m-1]} ${serieFine(p).anno}`:''}${p.giorno?' · giorno '+esc(p.giorno):''}</span></span><span class="amt">${s.length?(same?eur(+s[0]):'variabile'):'–'}</span></button>`}).join('')}</div></section>`).join('')||'<p class="empty">Nessuna previsione per il '+S.anno+'.</p>');
 }
 const ordBtns=(act,id,nome,i,n)=>`<button class="ghost" data-act="${act}" data-id="${esc(id)}" data-k="-1" aria-label="Sposta su ${esc(nome)}" ${i===0?'disabled':''}><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M6 15l6-6 6 6"/></svg></button><button class="ghost" data-act="${act}" data-id="${esc(id)}" data-k="1" aria-label="Sposta giù ${esc(nome)}" ${i===n-1?'disabled':''}><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg></button>`;
 function vCategorie(){
@@ -850,6 +851,13 @@ let toastT=0;function toast(t){const el=document.getElementById('toast');const w
   el.hidden=false;el.classList.remove('in');void el.offsetWidth;el.classList.add('in');el.onclick=()=>{el.classList.remove('in');setTimeout(()=>el.hidden=true,250)};
   clearTimeout(toastT);toastT=setTimeout(()=>{el.classList.remove('in');setTimeout(()=>el.hidden=true,250)},3200)}
 function catOptions(sel){return cats().filter(c=>catAttiva(c,S.anno)||c.id===sel||catHaDati(c.id,S.anno)).map(c=>`<option value="${esc(c.id)}" ${c.id===sel?'selected':''}>${esc(c.nome)}</option>`).join('')}
+const annoOptions=(da,sel,n=11)=>Array.from({length:n},(_,i)=>da+i).map(a=>`<option value="${a}" ${a===sel?'selected':''}>${a}</option>`).join('');
+// salva una previsione che può proseguire negli anni successivi: list = [{anno,m}] ; una riga per anno, stessa "serie"
+async function salvaSerie(base,list,v,serie){const by={};list.forEach(x=>{(by[x.anno]=by[x.anno]||Array(12).fill(null))[x.m-1]=r2(v)});const anni=Object.keys(by).map(Number).sort();
+  const sid=anni.length>1?(serie||newId('previsioni')):(serie||null);
+  for(const a of anni){await put('previsioni/'+newId('previsioni'),Object.assign({},base,{anno:a,importi:by[a],effettivi:{},serie:sid}))}return anni}
+function serieRighe(p){return p&&p.serie?S.D.previsioni.filter(x=>x.serie===p.serie).sort((a,b)=>a.anno-b.anno):[p]}
+function serieFine(p){const r=serieRighe(p),u=r[r.length-1];let m=0;(u.importi||[]).forEach((v,i)=>{if(v!=null)m=i+1});return {anno:u.anno,m}}
 function meseOptions(sel){return MESI.map((n,i)=>`<option value="${i+1}" ${i+1===sel?'selected':''}>${n}</option>`).join('')}
 function stipOptions(sel){return [...Array(14).keys()].map(i=>`<option value="${i+1}" ${i+1===sel?'selected':''}>${nomeStip(i+1)}</option>`).join('')}
 function topCats(){const lim=Date.now()-120*864e5;const cnt={};S.D.movimenti.forEach(x=>{if(x.tipo==='spesa'&&x.categoria){const d=x.data?Date.parse(x.data):0;cnt[x.categoria]=(cnt[x.categoria]||0)+(d>=lim?3:1)}});
@@ -875,8 +883,9 @@ function sheetAdd(kind='uscita'){
    <div class="field k-ecat"><label for="a-ecat">Categoria entrata</label><select id="a-ecat">${ecatOptions('')}</select><p class="note">Le crei in Altro → Categorie → Entrate.</p></div>
    <div class="field k-met"><label id="a-metlbl">Metodo di pagamento</label>${metPick(lastMet()||metodi()[0])}</div>
    <div class="field k-prev"><label>Tipo</label><div class="seg" role="group" aria-label="Tipo di previsione"><button type="button" data-ptipo="certo">Importo certo</button><button type="button" data-ptipo="variabile">Variabile</button><button type="button" data-ptipo="budget">Budget</button></div><p class="note" id="a-ptnote"></p></div>
-   <div class="two k-prev"><div class="field"><label for="a-pda">Dal mese</label><select id="a-pda">${meseOptions(curM())}</select></div><div class="field"><label for="a-pa">Fino a</label><select id="a-pa">${meseOptions(12)}</select></div></div>
-   <div class="two k-prev"><div class="field"><label for="a-pf">Frequenza</label><select id="a-pf"><option value="1">Ogni mese</option><option value="2">Ogni 2 mesi</option><option value="3">Ogni 3 mesi</option><option value="6">Ogni 6 mesi</option><option value="12">Una volta</option></select></div><div class="field k-pg"><label for="a-pg">Giorno di addebito</label><input id="a-pg" inputmode="numeric" placeholder="es. 5"></div></div>
+   <div class="two k-prev"><div class="field"><label for="a-pda">Dal mese (${S.anno})</label><select id="a-pda">${meseOptions(curM())}</select></div><div class="field"><label for="a-pf">Frequenza</label><select id="a-pf"><option value="1">Ogni mese</option><option value="2">Ogni 2 mesi</option><option value="3">Ogni 3 mesi</option><option value="6">Ogni 6 mesi</option><option value="12">Una volta</option></select></div></div>
+   <div class="two k-prev k-pend"><div class="field"><label for="a-pa">Fino al mese</label><select id="a-pa">${meseOptions(12)}</select></div><div class="field"><label for="a-pay">Dell'anno</label><select id="a-pay">${annoOptions(S.anno,S.anno)}</select></div></div>
+   <div class="k-prev"><div class="field k-pg"><label for="a-pg">Giorno di addebito</label><input id="a-pg" inputmode="numeric" placeholder="es. 5"></div></div>
    <div class="k-prev k-pscad"><div class="field k-scad"><button type="button" class="switch" id="a-scad" role="switch" aria-checked="false"><span class="sw-t"><strong>È una scadenza</strong><span class="small muted">Rata, bolletta, assicurazione: compare in "Prossime scadenze". La benzina o la spesa no.</span></span><span class="sw-k" aria-hidden="true"></span></button></div></div>
    <p class="note k-prev" id="a-pprev"></p>
    <div class="field k-desc"><label for="a-desc">Descrizione</label><input id="a-desc" autocomplete="off" placeholder="Es. Benzina, Cena, Reso Zalando…"></div>
@@ -900,10 +909,11 @@ function sheetAdd(kind='uscita'){
     let scad=null;const scadAuto=()=>{const c=cats().find(x=>x.id===$('#a-cat').value);return !!c&&c.tipo==='fissa'};
     const scadDraw=()=>{const v=scad===null?scadAuto():scad;$('#a-scad').setAttribute('aria-checked',v)};
     let ptipo='certo';const PTN={certo:'Diventa pagata da sola nel giorno di addebito; puoi correggerla dopo.',variabile:'Dal giorno di addebito resta "da confermare" finché non scrivi l\'importo vero.',budget:'Tetto mensile che le spese vere consumano. A mese chiuso conta solo il reale.'};
-    const prevMesi=()=>{const da=+$('#a-pda').value,a=+$('#a-pa').value,f=+$('#a-pf').value;const out=[];if(a<da)return out;for(let m=da;m<=a;m+=f){out.push(m);if(f===12)break}return out};
-    const prevUpd=()=>{const ms_=prevMesi(),v=num($('#a-imp').value);$('#a-pprev').textContent=!ms_.length?'"Fino a" deve venire dopo "Dal mese".':`${ms_.length} ${ms_.length===1?'addebito':'addebiti'} nel ${S.anno}: ${ms_.map(m=>MB[m-1]).join(', ')}${v>0?` · totale ${eur(r2(v*ms_.length))}`:''}.`};
+    const prevMesi=()=>{const da=+$('#a-pda').value,f=+$('#a-pf').value,i0=S.anno*12+da-1,i1=(+$('#a-pay').value)*12+(+$('#a-pa').value)-1;const out=[];if(i1<i0)return out;for(let i=i0;i<=i1;i+=f){out.push({anno:Math.floor(i/12),m:i%12+1});if(f===12)break}return out};
+    const prevUpd=()=>{$('.k-pend').hidden=verso!=='prevista'||$('#a-pf').value==='12';const ms_=prevMesi(),v=num($('#a-imp').value);const lab=x=>MB[x.m-1]+(x.anno!==S.anno?' '+String(x.anno).slice(2):'');
+      $('#a-pprev').textContent=!ms_.length?'"Fino a" deve venire dopo "Dal mese".':`${ms_.length} ${ms_.length===1?'addebito':'addebiti'}${ms_.length>1?`, da ${MESI[ms_[0].m-1]} ${ms_[0].anno} a ${MESI[ms_[ms_.length-1].m-1]} ${ms_[ms_.length-1].anno}`:`: ${lab(ms_[0])} ${ms_[0].anno}`}${v>0?` · totale ${eur(r2(v*ms_.length))}`:''}.`};
     el.querySelectorAll('[data-ptipo]').forEach(b=>b.onclick=()=>{ptipo=b.dataset.ptipo;if(ptipo==='budget'){$('#a-pf').value='1'}sync()});
-    ['#a-pda','#a-pa','#a-pf'].forEach(q=>$(q).addEventListener('change',prevUpd));$('#a-imp').addEventListener('input',()=>{if(verso==='prevista')prevUpd()});
+    ['#a-pda','#a-pa','#a-pay','#a-pf'].forEach(q=>$(q).addEventListener('change',prevUpd));$('#a-imp').addEventListener('input',()=>{if(verso==='prevista')prevUpd()});
     $('#a-scad').onclick=()=>{scad=!($('#a-scad').getAttribute('aria-checked')==='true');scadDraw()};$('#a-cat').addEventListener('change',()=>{if(verso==='prevista')scadDraw()});el.querySelectorAll('.k-pchips [data-cat]').forEach(b=>b.addEventListener('click',()=>setTimeout(scadDraw)));
     sync();
     el.querySelectorAll('[data-verso]').forEach(b=>b.onclick=()=>{verso=b.dataset.verso;sync()});
@@ -922,9 +932,9 @@ function sheetAdd(kind='uscita'){
       if((verso!=='entrata'||sub==='reso')&&!$('#a-cat').value){$('#a-cat').focus();toast('Scegli una categoria');return}
       const desc=$('#a-desc').value.trim();
       if(verso==='prevista'){const ms_=prevMesi();if(!ms_.length){toast('"Fino a" deve venire dopo "Dal mese"');return}
-        const importi=Array(12).fill(null);ms_.forEach(m=>importi[m-1]=r2(v));const g=parseInt($('#a-pg').value,10);const cat=$('#a-cat').value;
-        await put('previsioni/'+newId(),{anno:S.anno,categoria:cat,descrizione:desc||catName(cat),tipo:ptipo,giorno:ptipo!=='budget'&&g>=1&&g<=31?g:null,scadenza:ptipo!=='budget'&&$('#a-scad').getAttribute('aria-checked')==='true',metodo:met,importi,effettivi:{}});
-        close();toast(`Prevista: ${desc||catName(cat)} ${eur(v)} · ${mesiLabel(importi)}`);return}const mese=+ms.value;const data=d.value||null;
+        const g=parseInt($('#a-pg').value,10);const cat=$('#a-cat').value;
+        const anni=await salvaSerie({categoria:cat,descrizione:desc||catName(cat),tipo:ptipo,giorno:ptipo!=='budget'&&g>=1&&g<=31?g:null,scadenza:ptipo!=='budget'&&$('#a-scad').getAttribute('aria-checked')==='true',metodo:met,freq:+$('#a-pf').value},ms_,v,null);
+        const u=ms_[ms_.length-1];close();toast(`Prevista: ${desc||catName(cat)} ${eur(v)} · ${ms_.length} ${ms_.length===1?'mese':'mesi'}${anni.length>1?` fino a ${MESI[u.m-1]} ${u.anno}`:''}`);return}const mese=+ms.value;const data=d.value||null;
       if(verso==='entrata'&&sub==='stipendio'){const m=+$('#a-sm').value,l=num($('#a-lordo').value);
         await put('stipendi/'+S.anno+'-'+pad(m),{anno:S.anno,mese:m,netto:r2(v),lordo:isNaN(l)?null:r2(l),stato:'confermato'});close();toast(`Inserito: stipendio ${nomeStip(m)} ${eur(v)} netto (confermato)`);return}
       if(verso==='entrata'&&sub==='spot'){await put('movimenti/'+newId('movimenti'),{anno:S.anno,mese,data,tipo:'spot',categoria:$('#a-ecat').value||null,descrizione:desc||entName($('#a-ecat').value)||'Entrata',importo:r2(v),metodo:met});close();toast(`Inserito: +${eur(v)} entrata spot${$('#a-ecat').value?' '+entName($('#a-ecat').value):''} · ${MESI[mese-1]}`);return}
@@ -990,23 +1000,37 @@ function sheetPrev(id){
    <div class="field"><label for="p-met">Metodo di pagamento</label><select id="p-met">${metOptions(p.metodo||'')}</select></div>
    <div class="k-g"><div class="field k-scad"><button type="button" class="switch" id="p-scad" role="switch" aria-checked="${p.scadenza?'true':'false'}"><span class="sw-t"><strong>È una scadenza</strong><span class="small muted">Rata, bolletta, assicurazione: compare in "Prossime scadenze". La benzina o la spesa no.</span></span><span class="sw-k" aria-hidden="true"></span></button></div></div>
    <div class="field k-g"><label for="p-g">Giorno di addebito</label><input id="p-g" inputmode="numeric" value="${esc(p.giorno||'')}" placeholder="es. 5 (vuoto = fine mese)"></div>
-   <div class="two"><div class="field"><label for="p-all">Importo da ripetere</label><input id="p-all" inputmode="decimal" placeholder="es. 380"></div><div class="field"><label for="p-from">Dal mese</label><select id="p-from">${meseOptions(1)}</select></div></div>
-   <div class="two"><div class="field"><label for="p-n">Per quanti mesi</label><select id="p-n">${Array.from({length:12},(_,i)=>`<option value="${i+1}" ${i===11?'selected':''}>${i+1}</option>`).join('')}</select></div><div class="field"><label>&nbsp;</label><button class="pill-btn soft" type="button" id="p-fill" style="height:50px">Compila i mesi</button></div></div>
+   <div class="two"><div class="field"><label for="p-all">Importo da ripetere</label><input id="p-all" inputmode="decimal" placeholder="es. 380"></div><div class="field"><label for="p-from">Dal mese (${p.anno})</label><select id="p-from">${meseOptions(1)}</select></div></div>
+   <div class="two"><div class="field"><label for="p-n">Per quanti mesi</label><select id="p-n">${Array.from({length:120},(_,i)=>`<option value="${i+1}" ${i===11?'selected':''}>${i+1}${(i+1)%12===0?` (${(i+1)/12} ${i+1===12?'anno':'anni'})`:''}</option>`).join('')}</select></div><div class="field"><label>&nbsp;</label><button class="pill-btn soft" type="button" id="p-fill" style="height:50px">Compila i mesi</button></div></div>
    <div class="grid12">${MB.map((m,i)=>`<div class="field"><label for="p-m${i}">${m}</label><input id="p-m${i}" inputmode="decimal" class="num" value="${inp(p.importi[i])}"></div>`).join('')}</div>
-   <p class="note">Mese vuoto = nessuna spesa prevista in quel mese.</p>
+   <p class="note" id="p-fnote">Mese vuoto = nessuna spesa prevista in quel mese.${id&&p.serie&&serieRighe(p).length>1?` Prosegue fino a ${MESI[serieFine(p).m-1]} ${serieFine(p).anno} (${serieRighe(p).map(x=>x.anno).join(', ')}).`:''}</p>
    <div class="actions">${id?'<button class="pill-btn danger" type="button" id="p-del">Elimina</button>':''}<button class="pill-btn" type="submit">Salva</button></div></form>`,(el,close)=>{
     const $=q=>el.querySelector(q);let tipo=p.tipo||'certo';
     const TN={certo:'Diventa pagata da sola il giorno di addebito. Puoi correggerla dopo.',variabile:'Dal giorno di addebito resta "da confermare" finché non scrivi l\'importo vero.',budget:'Tetto mensile: le spese vere della categoria lo consumano. A mese chiuso conta solo il reale.'};
     const sync=()=>{el.querySelectorAll('[data-tipo]').forEach(b=>b.setAttribute('aria-pressed',b.dataset.tipo===tipo));$('#p-tnote').textContent=TN[tipo];el.querySelectorAll('.k-g').forEach(x=>x.hidden=tipo==='budget')};sync();
     el.querySelectorAll('[data-tipo]').forEach(b=>b.onclick=()=>{tipo=b.dataset.tipo;sync()});
     $('#p-scad').onclick=()=>$('#p-scad').setAttribute('aria-checked',$('#p-scad').getAttribute('aria-checked')!=='true');
-    $('#p-fill').onclick=()=>{const v=num($('#p-all').value);if(isNaN(v)){toast('Scrivi l\'importo da ripetere');return}const from=+$('#p-from').value-1,n=+$('#p-n').value;for(let i=0;i<12;i++)$('#p-m'+i).value=(i>=from&&i<from+n)?inp(v):''};
+    let ext=null;
+    $('#p-fill').onclick=()=>{const v=num($('#p-all').value);if(isNaN(v)){toast('Scrivi l\'importo da ripetere');return}const from=+$('#p-from').value-1,n=+$('#p-n').value;for(let i=0;i<12;i++)$('#p-m'+i).value=(i>=from&&i<from+n)?inp(v):'';
+      const end=from+n-1;ext={v,list:[]};for(let i=12;i<=end;i++)ext.list.push({anno:p.anno+Math.floor(i/12),m:i%12+1});
+      $('#p-fnote').textContent=ext.list.length?`Prosegue fino a ${MESI[end%12]} ${p.anno+Math.floor(end/12)}: i mesi degli anni successivi vengono creati al salvataggio.`:'Mese vuoto = nessuna spesa prevista in quel mese.'+(p.serie&&serieRighe(p).length>1?' Al salvataggio gli anni successivi della serie vengono tolti.':'');
+      if(!ext.list.length)ext.trim=true};
     $('#f-p').onsubmit=async e=>{e.preventDefault();const imp=MB.map((_,i)=>{const t=$('#p-m'+i).value;const v=num(t);return t.trim()===''||isNaN(v)?null:r2(v)});
       if(!imp.some(v=>v!=null)){toast('Inserisci almeno un mese');return}
       const g=parseInt($('#p-g').value,10);const cat=$('#p-cat').value;
       const nd={anno:p.anno,categoria:cat,descrizione:$('#p-desc').value.trim()||catName(cat),tipo,importi:imp,giorno:tipo!=='budget'&&g>=1&&g<=31?g:null,scadenza:tipo!=='budget'&&$('#p-scad').getAttribute('aria-checked')==='true',metodo:$('#p-met').value||null,effettivi:p.effettivi||{}};
-      await put('previsioni/'+(id||newId('previsioni')),nd);close();toast(`${id?'Aggiornata':'Inserita'}: ${nd.descrizione} · ${mesiLabel(imp)}`)};
-    if(id)$('#p-del').onclick=async()=>{close();if(await confirmBox('Elimina previsione',`Eliminare "${esc(p.descrizione)}" da tutti i mesi del ${p.anno}, comprese le conferme già fatte?`,'Elimina',true)){await del('previsioni/'+id);toast('Previsione eliminata')}};
+      const myId=id||newId('previsioni');
+      if(ext&&(ext.list.length||ext.trim)){const sid=p.serie||(ext.list.length?myId:null);nd.serie=sid;nd.freq=p.freq||1;
+        if(p.serie)for(const x of S.D.previsioni.filter(x=>x.serie===p.serie&&x.anno>p.anno))await del('previsioni/'+x.id);
+        await put('previsioni/'+myId,nd);
+        if(ext.list.length){const base=Object.assign({},nd);delete base.anno;delete base.importi;delete base.effettivi;await salvaSerie(base,ext.list,ext.v,sid)}
+        close();const u=ext.list[ext.list.length-1];toast(`${id?'Aggiornata':'Inserita'}: ${nd.descrizione}${u?` fino a ${MESI[u.m-1]} ${u.anno}`:' · '+mesiLabel(imp)}`);return}
+      nd.serie=p.serie||null;nd.freq=p.freq||null;
+      await put('previsioni/'+myId,nd);close();toast(`${id?'Aggiornata':'Inserita'}: ${nd.descrizione} · ${mesiLabel(imp)}`)};
+    if(id)$('#p-del').onclick=async()=>{close();const sr=serieRighe(p);
+      if(sr.length>1){const ch=await choiceBox('Elimina previsione',`"${esc(p.descrizione)}" prosegue in più anni (${sr.map(x=>x.anno).join(', ')}). Cosa elimino, comprese le conferme già fatte?`,[['uno','Solo il '+p.anno],['dopo','Dal '+p.anno+' in poi'],['tutti','Tutti gli anni'],['0','Annulla']]);
+        if(ch==='0')return;const rm=sr.filter(x=>ch==='tutti'||(ch==='dopo'?x.anno>=p.anno:x.id===id));for(const x of rm)await del('previsioni/'+x.id);toast(rm.length>1?`Previsione eliminata da ${rm.length} anni`:'Previsione eliminata');return}
+      if(await confirmBox('Elimina previsione',`Eliminare "${esc(p.descrizione)}" da tutti i mesi del ${p.anno}, comprese le conferme già fatte?`,'Elimina',true)){await del('previsioni/'+id);toast('Previsione eliminata')}};
   });
 }
 function sheetStip(m){
@@ -1069,12 +1093,12 @@ async function simConfirm(){
 async function creaAnno(n){
   const prevY=n-1;
   if(!haDati(prevY)){toast('Mancano previsioni e movimenti del '+prevY);return}
-  if(!await confirmBox('Crea previsionale '+n,`Copio le previsioni del ${prevY} (senza le conferme) e aggiungo, per ogni categoria, un budget pari alle altre spese del ${prevY}. Il riporto di Gennaio è automatico: avanzo di fine ${prevY}, se positivo. I netti usano la stima anno precedente. Procedo?`,'Crea'))return;
+  if(!await confirmBox('Crea previsionale '+n,`Copio le previsioni del ${prevY} (senza le conferme; quelle che proseguono su più anni, come le rate, restano come le hai impostate) e aggiungo, per ogni categoria, un budget pari alle altre spese del ${prevY}. Il riporto di Gennaio è automatico: avanzo di fine ${prevY}, se positivo. I netti usano la stima anno precedente. Procedo?`,'Crea'))return;
   const y=computeYear(S.D,prevY,today());
-  const attN=id=>{const c=cats().find(x=>x.id===id);return !c||catAttiva(c,n)};const pv=S.D.previsioni.filter(p=>p.anno===prevY&&attN(p.categoria));const ist=istanze(S.D,prevY,today());
+  const attN=id=>{const c=cats().find(x=>x.id===id);return !c||catAttiva(c,n)};const giaN=S.D.previsioni.filter(p=>p.anno===n);const pv=S.D.previsioni.filter(p=>p.anno===prevY&&attN(p.categoria)&&!p.serie&&!giaN.some(q=>q.categoria===p.categoria&&q.descrizione===p.descrizione));const ist=istanze(S.D,prevY,today());
   for(const p of pv){const d=clean(p);d.anno=n;d.effettivi={};await put('previsioni/'+newId('previsioni'),d)}
   for(const c of y.cat.filter(c=>attN(c.id))){const imp=c.mesi.map((v,i)=>{const pre=ist.filter(x=>x.p.categoria===c.id&&x.m===i+1).reduce((a,x)=>a+x.importo,0);const r=r2(v-pre);return r>0.004?r:null});
-    if(imp.some(v=>v!=null)&&!pv.some(p=>p.categoria===c.id&&p.tipo==='budget'))await put('previsioni/'+newId('previsioni'),{anno:n,categoria:c.id,descrizione:'Stima da '+prevY,tipo:'budget',giorno:null,importi:imp,effettivi:{}})}
+    if(imp.some(v=>v!=null)&&!pv.some(p=>p.categoria===c.id&&p.tipo==='budget')&&!giaN.some(p=>p.categoria===c.id&&p.tipo==='budget'))await put('previsioni/'+newId('previsioni'),{anno:n,categoria:c.id,descrizione:'Stima da '+prevY,tipo:'budget',giorno:null,importi:imp,effettivi:{}})}
   
   S.anno=n;S.mese=1;location.hash='#home';render();toast('Previsionale '+n+' creato');
 }
@@ -1165,7 +1189,7 @@ function sheetEcat(id){
 async function moveEcat(id,dir){const cf=cfgCopy();const arr=cf.entrate.sort((a,b)=>a.ordine-b.ordine);const i=arr.findIndex(c=>c.id===id),j=i+dir;if(i<0||j<0||j>=arr.length)return;[arr[i],arr[j]]=[arr[j],arr[i]];arr.forEach((c,k)=>c.ordine=k);cf.entrate=arr;await saveConfig(cf)}
 function setAnno(a){S.anno=a;S.mese=a===today().getFullYear()?today().getMonth()+1:(S.mese||1);render()}
 function sheetAnno(){
-  const yrs=anni(),cur=today().getFullYear(),nx=yrs.find(a=>a>cur&&!haDati(a));
+  const yrs=anni(),cur=today().getFullYear(),nx=yrs.find(a=>a>cur&&!previsionaleCreato(a));
   openSheet('Anno',`<div class="yr-grid">${yrs.map(a=>`<button class="pill-btn ${a===S.anno?'':'soft'}" data-y="${a}">${a}${a===today().getFullYear()?' · in corso':haDati(a)?'':' · vuoto'}</button>`).join('')}</div>${nx?`<button class="link" id="yr-crea" style="align-self:center;margin-top:6px">Crea previsionale ${nx} dal ${nx-1}</button>`:''}`,(el,close)=>{
     if(nx)el.querySelector('#yr-crea').onclick=()=>{close();creaAnno(nx)};
     el.querySelectorAll('[data-y]').forEach(b=>b.onclick=()=>{close();setAnno(+b.dataset.y)});
@@ -1336,11 +1360,11 @@ function rawToD(raw){
   const movimenti=(raw.movimenti||[]).filter(x=>x.id).map(x=>{const o={id:st(x.id),anno:nz(x.anno),mese:nz(x.mese),data:x.data?st(x.data):null,tipo:st(x.tipo),categoria:x.categoria?st(x.categoria):null,descrizione:st(x.descrizione),importo:nz(x.importo)||0,metodo:x.metodo?st(x.metodo):null};
     if(x.gruppo){o.gruppo=st(x.gruppo);o.quota=st(x.quota);o.totale=nz(x.totale)}return o});
   const previsioni=(raw.previsioni||[]).filter(x=>x.id).map(x=>{const eff={};MB_.forEach((m,i)=>{const v=nz(x['Eff '+m]);if(v!=null)eff[String(i+1)]=v});
-    return {id:st(x.id),scadenza:x.scadenza===true||String(x.scadenza).toUpperCase()==='TRUE',anno:nz(x.anno),categoria:st(x.categoria),descrizione:st(x.descrizione),tipo:st(x.tipo)||'certo',giorno:nz(x.giorno),metodo:x.metodo?st(x.metodo):null,importi:MB_.map(m=>nz(x[m])),effettivi:eff}});
+    return {id:st(x.id),scadenza:x.scadenza===true||String(x.scadenza).toUpperCase()==='TRUE',anno:nz(x.anno),categoria:st(x.categoria),descrizione:st(x.descrizione),tipo:st(x.tipo)||'certo',giorno:nz(x.giorno),metodo:x.metodo?st(x.metodo):null,serie:x.serie?st(x.serie):null,freq:nz(x.freq),importi:MB_.map(m=>nz(x[m])),effettivi:eff}});
   const stipendi=(raw.stipendi||[]).filter(x=>x.id).map(x=>({id:st(x.id),anno:nz(x.anno),mese:nz(x.mese),netto:nz(x.netto),lordo:nz(x.lordo),stato:st(x.stato)||'confermato'}));
   return {config:{nome:'Michele Parente',categorie,entrate,metodi,riporti},movimenti,previsioni,stipendi};
 }
-function prevToRow(d){const r={anno:d.anno,categoria:d.categoria,descrizione:d.descrizione,tipo:d.tipo,giorno:d.giorno??null,metodo:d.metodo??null,scadenza:!!d.scadenza};
+function prevToRow(d){const r={anno:d.anno,categoria:d.categoria,descrizione:d.descrizione,tipo:d.tipo,giorno:d.giorno??null,metodo:d.metodo??null,scadenza:!!d.scadenza,serie:d.serie??null,freq:d.freq??null};
   MB_.forEach((m,i)=>{r[m]=d.importi?d.importi[i]:null;const e=d.effettivi&&d.effettivi[String(i+1)];r['Eff '+m]=e==null?null:e});return r}
 function movToRow(d){return {anno:d.anno,mese:d.mese,data:d.data||null,tipo:d.tipo,categoria:d.categoria||null,descrizione:d.descrizione||'',importo:d.importo,metodo:d.metodo||null,gruppo:d.gruppo||null,quota:d.quota||null,totale:d.totale??null}}
 function configOps(c){return [
