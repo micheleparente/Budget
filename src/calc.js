@@ -38,7 +38,8 @@ function annoHaDati(D,a){return (D.movimenti||[]).some(x=>x.anno===a)||(D.previs
 function riportoInfo(D,anno,oggi){
   const man=((D.config&&D.config.riporti)||{})[String(anno)];
   if(man!=null&&man!=='')return {v:+man||0,auto:false,av:null};
-  if(annoHaDati(D,anno-1)){const av=computeYear(D,anno-1,oggi).mesi[11].avanzo;return {v:av>0?av:0,auto:true,av}}
+  // serve l'anno prima con le spese (solo gli stipendi, es. 2024-2025, non bastano)
+  if((D.movimenti||[]).some(x=>x.anno===anno-1)||(D.previsioni||[]).some(x=>x.anno===anno-1)){const av=computeYear(D,anno-1,oggi).mesi[11].avanzo;return {v:av>0?av:0,auto:true,av}}
   return {v:+(((D.config&&D.config.riporti)||{})[String(anno)]||0),auto:false,av:null};
 }
 function budgetChiuso(p,m){return !!(p.effettivi&&p.effettivi[String(m)]!=null)}

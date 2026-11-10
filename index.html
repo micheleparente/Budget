@@ -276,6 +276,7 @@ input,select,textarea{font-size:max(16px,1em)}
 .badge.db b{font-size:16px;font-weight:800;line-height:1}
 .badge.db i{font-style:normal;font-size:9.5px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;opacity:.75;line-height:1}
 #reg-res{display:flex;flex-direction:column;gap:16px}
+tr.sel td{background:color-mix(in srgb,var(--accent) 8%,transparent)}
 
 </style>
 </head>
@@ -332,7 +333,8 @@ function annoHaDati(D,a){return (D.movimenti||[]).some(x=>x.anno===a)||(D.previs
 function riportoInfo(D,anno,oggi){
   const man=((D.config&&D.config.riporti)||{})[String(anno)];
   if(man!=null&&man!=='')return {v:+man||0,auto:false,av:null};
-  if(annoHaDati(D,anno-1)){const av=computeYear(D,anno-1,oggi).mesi[11].avanzo;return {v:av>0?av:0,auto:true,av}}
+  // serve l'anno prima con le spese (solo gli stipendi, es. 2024-2025, non bastano)
+  if((D.movimenti||[]).some(x=>x.anno===anno-1)||(D.previsioni||[]).some(x=>x.anno===anno-1)){const av=computeYear(D,anno-1,oggi).mesi[11].avanzo;return {v:av>0?av:0,auto:true,av}}
   return {v:+(((D.config&&D.config.riporti)||{})[String(anno)]||0),auto:false,av:null};
 }
 function budgetChiuso(p,m){return !!(p.effettivi&&p.effettivi[String(m)]!=null)}
@@ -772,11 +774,17 @@ function vRegistro(){
 function vEntrate(){
   const y=Y();const np=nettiAnno(S.D,S.anno-1);
   const rows=[];
-  for(let m=1;m<=14;m++){const n=y.netti[m],p=np[m];if(!n&&!p)continue;
+  for(const m of [1,2,3,4,5,6,7,14,8,9,10,11,12,13]){const n=y.netti[m],p=np[m];if(!n&&!p)continue;
     const dn=n&&p?r2(n.netto-p.netto):null,dl=n&&p&&n.lordo!=null&&p.lordo!=null?r2(n.lordo-p.lordo):null;
     rows.push(`<tr class="click" data-act="editstip" data-k="${m}"><td>${nomeStip(m)}</td><td><strong>${n?n2(n.netto):'–'}</strong></td><td>${n&&n.lordo!=null?n2(n.lordo):'–'}</td><td class="${dn<0?'neg':dn>0?'pos':''}">${dn==null?'–':(dn>0?'+':'')+n2(dn)}</td><td class="${dl<0?'neg':dl>0?'pos':''}">${dl==null?'–':(dl>0?'+':'')+n2(dl)}</td><td>${n?`<span class="chip ${n.stato==='confermato'?'ok':'sim'}">${n.stato==='confermato'?'OK':'SIM'}</span>`:''}</td></tr>`)}
   const tl=r2(Object.values(y.netti).reduce((a,n)=>a+(+n.lordo||0),0));
-  const pt=r2(Object.values(np).reduce((a,n)=>a+(+n.netto||0),0));
+  const pt=r2(Object.values(np).reduce((a,n)=>a+(+n.netto||0),0));const plt=r2(Object.values(np).reduce((a,n)=>a+(+n.lordo||0),0));
+  const simAnno=Object.values(y.netti).some(n=>n.stato!=='confermato');
+  const tasse=tl?r2(tl-y.totNetti):0,ptasse=plt?r2(plt-pt):0;
+  // confronto tra gli anni con stipendi registrati
+  const anniS=[...new Set(S.D.stipendi.map(x=>x.anno))].filter(a=>a<=S.anno).sort((a,b)=>b-a);
+  const conf=anniS.map(a=>{const N=nettiAnno(S.D,a);const nt=r2(Object.values(N).reduce((s,n)=>s+(+n.netto||0),0)),lt=r2(Object.values(N).reduce((s,n)=>s+(+n.lordo||0),0));const sim=Object.values(N).some(n=>n.stato!=='confermato');return {a,nt,lt,tx:r2(lt-nt),sim}});
+  const confRows=conf.map((c,i)=>{const pr=conf[i+1];const d=pr?r2(c.nt-pr.nt):null;return `<tr class="${c.a===S.anno?'sel':''}"><td>${c.a}${c.sim?' <span class="chip sim">SIM</span>':''}</td><td><strong>${n2(c.nt)}</strong></td><td>${n2(r2(c.nt/12))}</td><td>${c.lt?n2(c.lt):'–'}</td><td>${c.lt?(c.tx/c.lt*100).toFixed(2).replace('.',',')+'%':'–'}</td><td class="${d<0?'neg':d>0?'pos':''}">${d==null?'–':(d>0?'+':'')+n2(d)}</td></tr>`}).join('');
   const mv=S.D.movimenti.filter(x=>x.anno===S.anno);
   const spot=mv.filter(x=>x.tipo==='spot').sort((a,b)=>a.mese-b.mese||(a.data||'').localeCompare(b.data||''));
   const resi=mv.filter(x=>x.tipo==='reso').sort((a,b)=>a.mese-b.mese);
@@ -785,7 +793,9 @@ function vEntrate(){
   return header('Entrate',{month:false,h:'Prospetto Entrate'})+
    `<div class="actions"><button class="pill-btn" data-act="add" data-k="stipendio">+ Stipendio</button><button class="pill-btn soft" data-act="add" data-k="spot">+ Entrata spot</button></div>`+
    `<section class="card"><div class="tiles"><div class="tile hero"><span class="t-l">Stipendio standard</span><span class="t-v num">${eur(y.std)}</span><span class="t-n">(12 netti + 13ª + 14ª) / 12</span></div><div class="tile"><span class="t-l">Netti anno</span><span class="t-v num">${eur(y.totNetti)}</span><span class="t-n num">${pt?'a.p. '+sgn(r2(y.totNetti-pt)):(tl?'Lordo '+eur(tl):'')}</span></div></div><p class="note">I mesi senza netto registrato usano la stima anno precedente (SIM). Quando registri lo stipendio diventa confermato (OK) e lo standard si ricalcola.</p></section>`+
-   (rows.length?`<div class="table-box"><table><thead><tr><th>Mese</th><th>Netto</th><th>Lordo</th><th>Δ netto a.p.</th><th>Δ lordo a.p.</th><th>Stato</th></tr></thead><tbody>${rows.join('')}<tr class="tot"><td>Totale</td><td>${n2(y.totNetti)}</td><td>${tl?n2(tl):'–'}</td><td>${pt?n2(r2(y.totNetti-pt)):'–'}</td><td></td><td></td></tr></tbody></table></div>`:'<p class="empty">Nessuno stipendio registrato per il '+S.anno+' né per l\'anno prima.</p>')+
+   (rows.length?`<div class="table-box"><table><thead><tr><th>Mese</th><th>Netto</th><th>Lordo</th><th>Δ netto a.p.</th><th>Δ lordo a.p.</th><th>Stato</th></tr></thead><tbody>${rows.join('')}<tr class="tot"><td>Totale</td><td>${n2(y.totNetti)}</td><td>${tl?n2(tl):'–'}</td><td>${pt?(y.totNetti>=pt?'+':'')+n2(r2(y.totNetti-pt)):'–'}</td><td>${plt&&tl?(tl>=plt?'+':'')+n2(r2(tl-plt)):'–'}</td><td></td></tr><tr class="tot"><td>Media mensile</td><td>${n2(r2(y.totNetti/12))}</td><td>${tl?n2(r2(tl/12)):'–'}</td><td>${pt?n2(r2((y.totNetti-pt)/12)):'–'}</td><td>${plt&&tl?n2(r2((tl-plt)/12)):'–'}</td><td></td></tr></tbody></table></div>`+
+   (tl?`<section class="card"><h2>Tasse e contributi ${S.anno}${simAnno?' <span class="chip sim">CON STIME</span>':''}</h2><div class="tiles"><div class="tile"><span class="t-l">Lordo − netto</span><span class="t-v num">${eur(tasse)}</span><span class="t-n">${(tasse/tl*100).toFixed(2).replace('.',',')}% del lordo</span></div><div class="tile"><span class="t-l">Media mensile</span><span class="t-v num">${eur(r2(tasse/12))}</span><span class="t-n">${ptasse?'a.p. '+eur(r2(ptasse/12)):'—'}</span></div></div>${ptasse?`<p class="note">${S.anno-1}: ${eur(ptasse)}, ${(ptasse/plt*100).toFixed(2).replace('.',',')}% del lordo · differenza ${sgn(r2(tasse-ptasse))}</p>`:''}</section>`:'')+
+   (conf.length>1?`<p class="sec-title">Confronto tra gli anni</p><div class="table-box"><table><thead><tr><th>Anno</th><th>Netto</th><th>Media mese</th><th>Lordo</th><th>Tasse</th><th>Δ netto a.p.</th></tr></thead><tbody>${confRows}</tbody></table></div><p class="note">Netto e lordo comprendono 13ª e 14ª. Media mese = netto / 12 (lo stipendio standard). SIM = anno con netti ancora stimati.</p>`:''):'<p class="empty">Nessuno stipendio registrato per il '+S.anno+' né per l\'anno prima.</p>')+
    `<p class="sec-title">Entrate spot</p><section class="card tight"><div class="list"><button class="item" data-act="editriporto"><span class="badge in">A.P.</span><span class="grow"><span class="t">Riporto dall'anno precedente</span><span class="s">${y.riportoAuto?`Avanzo di Dicembre ${S.anno-1}${y.riportoAvanzo<0?' negativo: non riportato':''} · automatico`:'Inserito a mano · conta solo a Gennaio'}</span></span><span class="amt">${eur(rip)}</span></button>${spot.map(li).join('')}</div></section>`+
    `<p class="sec-title">Storni e resi</p><section class="card tight"><div class="list">${resi.map(li).join('')||'<p class="empty">Nessuno storno o reso. Riducono la spesa della loro categoria.</p>'}</div></section>`;
 }
