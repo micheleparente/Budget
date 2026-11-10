@@ -2,7 +2,7 @@
 <html lang="it">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="viewport" content="width=device-width, initial-scale=1, minimum-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
@@ -154,7 +154,7 @@ tr.click{cursor:pointer}
 .field input.big{height:68px;font-size:34px;font-weight:800;letter-spacing:-.5px}
 .two{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
 .grid12{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
-.grid12 .field input{height:44px;font-size:15px;padding:0 10px}
+.grid12 .field input{height:44px;font-size:16px;padding:0 10px}
 .catpick{display:flex;flex-wrap:wrap;gap:8px}
 .catpick button{height:40px;padding:0 14px;border-radius:20px;border:1px solid var(--line);background:var(--card);font-size:14px;font-weight:600}
 .catpick button[aria-pressed="true"]{background:var(--accent);color:var(--on-accent);border-color:var(--accent)}
@@ -172,7 +172,7 @@ tr.click{cursor:pointer}
 .item.is-prev .badge{background:transparent;border:1.5px dashed var(--line);color:var(--sub)}
 .badge.in{background:color-mix(in srgb,var(--pos) 16%,transparent);color:var(--pos)}
 .sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
-.field select#reg-cat,.field select#reg-met{height:44px;font-size:15px}
+.field select#reg-cat,.field select#reg-met{height:44px;font-size:16px}
 [hidden]{display:none!important}
 
 /* schermata di avvio */
@@ -269,6 +269,8 @@ html.priv .sec-title,html.priv h1,html.priv h2{filter:none}
 .field select#reg-cat,.field select#reg-met{padding-right:34px;background-position:right 12px center}
 .pct-line{display:inline-block;margin-top:2px}
 .netrow .nr-s{display:block;min-height:2.7em;line-height:1.35}
+html,body{touch-action:manipulation;-webkit-text-size-adjust:100%;text-size-adjust:100%}
+input,select,textarea{font-size:max(16px,1em)}
 
 </style>
 </head>
@@ -1461,6 +1463,13 @@ if('serviceWorker' in navigator&&location.protocol==='https:'){
   }).catch(()=>{});
   navigator.serviceWorker.addEventListener('controllerchange',()=>{if(hadSW&&!reloaded&&!document.querySelector('.sheet')){reloaded=true;location.reload()}});
 }
+
+// ---------- niente zoom (come un'app) ----------
+(function(){
+  const stop=e=>e.preventDefault();
+  ['gesturestart','gesturechange','gestureend'].forEach(t=>document.addEventListener(t,stop,{passive:false}));
+  document.addEventListener('touchmove',e=>{if(e.touches&&e.touches.length>1)e.preventDefault()},{passive:false});
+})();
 
 route();start();
 </script>
