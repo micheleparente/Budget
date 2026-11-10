@@ -172,7 +172,7 @@ tr.click{cursor:pointer}
 .item.is-prev .badge{background:transparent;border:1.5px dashed var(--line);color:var(--sub)}
 .badge.in{background:color-mix(in srgb,var(--pos) 16%,transparent);color:var(--pos)}
 .sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
-.field select#reg-cat{height:44px;font-size:15px}
+.field select#reg-cat,.field select#reg-met{height:44px;font-size:15px}
 [hidden]{display:none!important}
 
 /* schermata di avvio */
@@ -262,6 +262,11 @@ html.priv .sec-title,html.priv h1,html.priv h2{filter:none}
 .amt.neg{color:var(--neg)}
 .seg.fit{display:flex;gap:2px;padding:3px}
 .seg.fit button{flex:1 1 auto;padding:0 6px;height:36px;font-size:clamp(11.5px,3.4vw,13.5px);white-space:nowrap;letter-spacing:-.1px}
+.field input,.field select{-webkit-appearance:none;appearance:none;box-sizing:border-box;line-height:normal;margin:0}
+.field select{padding-right:38px;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%238A8F99' stroke-width='2.6' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M7 10l5 5 5-5'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 14px center;background-size:14px}
+.field input[type=date]{display:flex;align-items:center;text-align:left;min-height:50px}
+.field input[type=date]::-webkit-date-and-time-value{text-align:left;margin:0}
+.field select#reg-cat,.field select#reg-met{padding-right:34px;background-position:right 12px center}
 
 </style>
 </head>
