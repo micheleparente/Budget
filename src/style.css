@@ -290,3 +290,10 @@ table.yt .plus{font-style:normal;color:var(--pos);font-weight:800;margin-left:2p
 .qclear{position:absolute;right:4px;top:50%;transform:translateY(-50%);width:44px;height:44px;display:flex;align-items:center;justify-content:center;border:0;background:transparent;color:var(--sub);padding:0;cursor:pointer;-webkit-tap-highlight-color:transparent}
 .qclear[hidden]{display:none}
 .qclear:active{opacity:.6}
+
+/* Home: ritmo spese variabili */
+.netrow.vr .vr-h{display:flex;justify-content:space-between;align-items:baseline;gap:12px}
+.vr-bar{position:relative;height:8px;border-radius:4px;background:var(--line);margin:10px 0 8px}
+.vr-fill{position:absolute;left:0;top:0;bottom:0;border-radius:4px}
+.vr-mark{position:absolute;top:-4px;bottom:-4px;width:2px;margin-left:-1px;background:var(--ink);border-radius:1px}
+.netrow+.netrow{margin-top:14px}

@@ -113,6 +113,33 @@ function proiezione(y,mi){const m=y.mesi[mi],t=today(),dim=new Date(S.anno,mi+1,
   const varReale=r2(S.D.movimenti.filter(x=>x.anno===S.anno&&x.mese===mi+1&&varIds.has(x.categoria)).reduce((a,x)=>a+(x.tipo==='reso'?-1:x.tipo==='spesa'?1:0)*(+x.importo),0));
   const ritmoG=g>0?varReale/g:0,stimaVar=r2(ritmoG*dim),extra=Math.max(0,r2(stimaVar-m.variabili));
   return {g,dim,left:dim-g+1,varReale,ritmoG,stimaVar,extra,fine:r2(m.saldo-extra)}}
+// Home, mese in corso: spese variabili fatte rispetto al previsto, confrontate col tempo passato del mese
+function ritmoVarRow(y,mi){
+  const t=today(),dim=new Date(S.anno,mi+1,0).getDate(),g=Math.min(t.getDate(),dim),m=mi+1;
+  const varIds=new Set(cats().filter(c=>c.tipo==='variabile').map(c=>c.id));
+  const real=S.D.movimenti.filter(x=>x.anno===S.anno&&x.mese===m&&varIds.has(x.categoria)).reduce((a,x)=>a+(x.tipo==='reso'?-1:x.tipo==='spesa'?1:0)*(+x.importo),0);
+  const ist=y.ist.filter(i=>i.m===m&&varIds.has(i.p.categoria));
+  const pagate=ist.filter(i=>i.stato==='effettivo').reduce((a,i)=>a+i.importo,0);
+  const bud=S.D.previsioni.filter(p=>p.anno===S.anno&&p.tipo==='budget'&&varIds.has(p.categoria)).reduce((a,p)=>a+(+((p.importi||[])[mi])||0),0);
+  const speso=r2(real+pagate),piano=r2(ist.reduce((a,i)=>a+i.previsto,0)+bud);
+  const pt=Math.round(g/dim*100);
+  if(!(piano>0))return `<a class="netrow vr" href="#dashboard" style="color:inherit;text-decoration:none"><div style="min-width:0;flex:1"><strong>Spese variabili</strong><span class="small muted nr-s">${eur(speso)} spesi · nessuna spesa variabile prevista per ${MESI[mi]}</span></div></a>`;
+  const ps=Math.round(speso/piano*100),fuori=ps>pt+10,oltre=speso>piano;
+  const col=oltre?'var(--neg)':fuori?'var(--warn-ink)':'var(--accent)';
+  const msg=oltre?`${eur(r2(speso-piano))} oltre il previsto`:fuori?'stai spendendo più in fretta del mese':'in linea con il mese';
+  return `<a class="netrow vr" href="#dashboard" style="color:inherit;text-decoration:none;display:block"><div class="vr-h"><strong>Spese variabili</strong><strong class="num" style="color:${col}">${ps}%</strong></div>
+   <div class="vr-bar" role="img" aria-label="Speso ${ps}% del previsto, passato ${pt}% del mese"><span class="vr-fill" style="width:${Math.min(ps,100)}%;background:${col}"></span><span class="vr-mark" style="left:${pt}%"></span></div>
+   <span class="small muted nr-s">${eur(speso)} su ${eur(piano)} previsti · giorno ${g} di ${dim} (${pt}%) · ${msg}</span></a>`;
+}
+// Home, mese in corso: uscite previste nei prossimi 7 giorni
+function prossimi7Row(){
+  const t=today(),t0=new Date(t.getFullYear(),t.getMonth(),t.getDate()),lim=new Date(t0.getTime()+7*864e5);
+  const out=[];[t0.getFullYear(),t0.getFullYear()+1].forEach(a=>istanze(S.D,a,t).forEach(i=>{if(i.stato!=='previsto')return;const d=dataAddebito(a,i.m,i.p.giorno||28);if(d<t0||d>lim)return;out.push({i,d})}));
+  out.sort((a,b)=>a.d-b.d);const tot=r2(out.reduce((a,x)=>a+x.i.importo,0));
+  const dd=d=>`${d.getDate()} ${MB[d.getMonth()]}`;
+  const sub=out.length?out.slice(0,3).map(x=>`${esc(x.i.p.descrizione)} ${dd(x.d)}`).join(' · ')+(out.length>3?` · +${out.length-3}`:''):'Nessuna uscita prevista';
+  return `<a class="netrow" href="#registro" style="color:inherit;text-decoration:none"><div style="min-width:0"><strong>Prossimi 7 giorni</strong><span class="small muted nr-s">${sub}</span></div><strong class="num" style="white-space:nowrap">${out.length?'−'+eur(tot):'—'}</strong></a>`;
+}
 function panoramicaCard(y,m,mi){
   const st=m.stato,lastClosed=y.mesi.filter(x=>x.stato==='chiuso').pop(),fine=y.mesi[11].avanzo;
   const tiles=S.kpi==='mese'?[
@@ -126,12 +153,12 @@ function panoramicaCard(y,m,mi){
     {l:'Avanzo a oggi',v:lastClosed?sgn(lastClosed.avanzo):'—',n:lastClosed?`Gen – ${MB[lastClosed.m-1]}`:'Nessun mese chiuso',c:lastClosed&&lastClosed.avanzo<0?'neg':'pos'},
     {l:'Fine anno',v:sgn(fine),n:'Previsione',c:fine<0?'neg':'pos'}
   ];
-  let rl,rs,rv,rc,rinv=false;
-  if(st==='corrente'){const P=proiezione(y,mi);rl='Se continui così';rs=`Spese variabili ${eur(r2(P.ritmoG))} al giorno · `+(P.extra>0?`${eur(P.extra)} oltre il previsto`:'nel previsto');rv=P.fine;rc='saldo a fine mese'}
+  let rl,rs,rv,rc,rinv=false,extraRows='';
+  if(st==='corrente'){extraRows=ritmoVarRow(y,mi)+prossimi7Row()}
   else{const ch=y.mesi.filter(x=>x.stato==='chiuso'&&x.m!==m.m);const med=ch.length?r2(ch.reduce((a,x)=>a+x.spese,0)/ch.length):null;
     rl=st==='chiuso'?'Spese rispetto alla media':'Spese previste vs media';
     if(med){const d=r2(m.spese-med);rv=d;rinv=true;rs=`Media mesi chiusi ${eur(med)} · ${Math.abs(Math.round(d/med*100))}% ${d>0?'in più':'in meno'}`}else{rv=null;rs='Nessun mese chiuso da confrontare'}rc=''}
-  const netRow=`<a class="netrow" href="#dashboard" style="color:inherit;text-decoration:none"><div style="min-width:0"><strong>${rl}</strong><span class="small muted nr-s">${rs}</span></div><strong class="num ${rv==null?'':(rinv?rv>0:rv<0)?'neg':'pos'}" style="white-space:nowrap">${rv==null?'—':sgn(rv)}</strong></a>`;
+  const netRow=extraRows||`<a class="netrow" href="#dashboard" style="color:inherit;text-decoration:none"><div style="min-width:0"><strong>${rl}</strong><span class="small muted nr-s">${rs}</span></div><strong class="num ${rv==null?'':(rinv?rv>0:rv<0)?'neg':'pos'}" style="white-space:nowrap">${rv==null?'—':sgn(rv)}</strong></a>`;
   return `<section class="card pano-card" aria-label="Panoramica"><div class="seg" role="group" aria-label="Periodo"><button data-act="kpi" data-k="mese" aria-pressed="${S.kpi==='mese'}">${MESI[mi]}</button><button data-act="kpi" data-k="anno" aria-pressed="${S.kpi==='anno'}">Anno ${S.anno}</button></div><div class="tiles">${tiles.map(t=>`<div class="tile ${t.hero?'hero':''}"><span class="t-l">${t.l}</span>${t.sim?'<span class="chip t-sim">SIMULATE</span>':''}<span class="t-v num ${t.c||''}">${t.v}</span><span class="t-n">${t.n}</span></div>`).join('')}</div>${netRow}</section>`;
 }
 function vHome(){
