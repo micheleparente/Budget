@@ -855,7 +855,7 @@ const annoOptions=(da,sel,n=11)=>Array.from({length:n},(_,i)=>da+i).map(a=>`<opt
 // salva una previsione che può proseguire negli anni successivi: list = [{anno,m}] ; una riga per anno, stessa "serie"
 async function salvaSerie(base,list,v,serie){const by={};list.forEach(x=>{(by[x.anno]=by[x.anno]||Array(12).fill(null))[x.m-1]=r2(v)});const anni=Object.keys(by).map(Number).sort();
   const sid=anni.length>1?(serie||newId('previsioni')):(serie||null);
-  for(const a of anni){await put('previsioni/'+newId('previsioni'),Object.assign({},base,{anno:a,importi:by[a],effettivi:{},serie:sid}))}return anni}
+  await batch(async()=>{for(const a of anni){await put('previsioni/'+(sid?sid+'-'+a:newId('previsioni')),Object.assign({},base,{anno:a,importi:by[a],effettivi:{},serie:sid}))}});return anni}
 function serieRighe(p){return p&&p.serie?S.D.previsioni.filter(x=>x.serie===p.serie).sort((a,b)=>a.anno-b.anno):[p]}
 function serieFine(p){const r=serieRighe(p),u=r[r.length-1];let m=0;(u.importi||[]).forEach((v,i)=>{if(v!=null)m=i+1});return {anno:u.anno,m}}
 function meseOptions(sel){return MESI.map((n,i)=>`<option value="${i+1}" ${i+1===sel?'selected':''}>${n}</option>`).join('')}
@@ -1020,10 +1020,10 @@ function sheetPrev(id){
       const g=parseInt($('#p-g').value,10);const cat=$('#p-cat').value;
       const nd={anno:p.anno,categoria:cat,descrizione:$('#p-desc').value.trim()||catName(cat),tipo,importi:imp,giorno:tipo!=='budget'&&g>=1&&g<=31?g:null,scadenza:tipo!=='budget'&&$('#p-scad').getAttribute('aria-checked')==='true',metodo:$('#p-met').value||null,effettivi:p.effettivi||{}};
       const myId=id||newId('previsioni');
-      if(ext&&(ext.list.length||ext.trim)){const sid=p.serie||(ext.list.length?myId:null);nd.serie=sid;nd.freq=p.freq||1;
+      if(ext&&(ext.list.length||ext.trim)){const sid=p.serie||(ext.list.length?myId:null);nd.serie=sid;nd.freq=p.freq||1;SYNC.hold=(SYNC.hold||0)+1;try{
         if(p.serie)for(const x of S.D.previsioni.filter(x=>x.serie===p.serie&&x.anno>p.anno))await del('previsioni/'+x.id);
         await put('previsioni/'+myId,nd);
-        if(ext.list.length){const base=Object.assign({},nd);delete base.anno;delete base.importi;delete base.effettivi;await salvaSerie(base,ext.list,ext.v,sid)}
+        if(ext.list.length){const base=Object.assign({},nd);delete base.anno;delete base.importi;delete base.effettivi;await salvaSerie(base,ext.list,ext.v,sid)}}finally{SYNC.hold--;if(!SYNC.hold)flush()}
         close();const u=ext.list[ext.list.length-1];toast(`${id?'Aggiornata':'Inserita'}: ${nd.descrizione}${u?` fino a ${MESI[u.m-1]} ${u.anno}`:' · '+mesiLabel(imp)}`);return}
       nd.serie=p.serie||null;nd.freq=p.freq||null;
       await put('previsioni/'+myId,nd);close();toast(`${id?'Aggiornata':'Inserita'}: ${nd.descrizione} · ${mesiLabel(imp)}`)};
@@ -1386,8 +1386,10 @@ function publish(){S.D=rawToD(SYNC.raw);S.ready=true;schedule()}
 async function enqueue(ops){
   SYNC.raw=applyLocal(SYNC.raw,ops);lsSet(LS.cache,SYNC.raw);
   SYNC.queue=SYNC.queue.concat(ops);lsSet(LS.queue,SYNC.queue);
-  publish();flush();
+  publish();if(!SYNC.hold)flush();
 }
+// più scritture in un solo invio (tutto o niente)
+async function batch(fn){SYNC.hold=(SYNC.hold||0)+1;try{return await fn()}finally{SYNC.hold--;if(!SYNC.hold)flush()}}
 async function call(method,body){
   const u=SYNC.api.url;
   const r=method==='GET'?await fetch(u+(u.includes('?')?'&':'?')+'key='+encodeURIComponent(SYNC.api.key)+'&t='+Date.now(),{redirect:'follow'})
