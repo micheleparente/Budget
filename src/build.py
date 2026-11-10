@@ -29,7 +29,7 @@ html=f'''<!DOCTYPE html>
 </head>
 <body>
 <div class="splash" id="splash" role="status" aria-live="polite" aria-label="Caricamento"><div><div class="word" aria-hidden="true"><span style="animation-delay:0.15s">b</span><span style="animation-delay:0.21s">u</span><span style="animation-delay:0.27s">d</span><span style="animation-delay:0.33s">g</span><span style="animation-delay:0.39s">e</span><span style="animation-delay:0.45s">t</span><span style="animation-delay:0.51s">.</span></div><p class="tag">Flussi di cassa · Michele</p></div><div class="bottom"><div class="row"><p id="splash-msg">Avvio…</p><span id="splash-pct" aria-hidden="true">0%</span></div><div class="track" aria-hidden="true"><div class="fill" id="splash-fill"></div></div></div></div>
-<main id="view" class="pg" aria-live="polite"></main>
+<div id="scr"><main id="view" class="pg" aria-live="polite"></main></div>
 <nav class="tabs" aria-label="Sezioni"><div class="in">
 <a href="#home" data-v="home">{ic('home')}<span>Home</span></a>
 <a href="#dashboard" data-v="dashboard">{ic('dash')}<span>Dashboard</span></a>

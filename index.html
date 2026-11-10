@@ -355,11 +355,11 @@ h1,h2,.monthnav h1{letter-spacing:-.6px}
 .hh-m .ml{border:0;background:none;font-weight:800;font-size:16px;white-space:nowrap;color:var(--ink);height:42px;padding:0 4px}
 .hh-badge{align-self:center;margin-top:-4px}
 .hh-hero{display:flex;flex-direction:column;align-items:center;gap:12px;padding-top:6px}
-.hero-ring{position:relative;width:min(244px,64vw);aspect-ratio:1}
+.hero-ring{--rs:min(244px,64vw);position:relative;width:var(--rs);aspect-ratio:1}
 .hero-ring svg{display:block;width:100%;height:100%}
 .hero-c{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:0 22px}
 .hero-c .lbl{font-size:15px;font-weight:600;color:var(--sub)}
-.hero-c .big{font-size:min(58px,calc(min(244px,64vw) * 1.25 / var(--len,6)));font-weight:700;letter-spacing:-.045em;line-height:1.1;white-space:nowrap}
+.hero-c .big{font-size:min(58px,calc(var(--rs) * 1.25 / var(--len,6)));font-weight:700;letter-spacing:-.045em;line-height:1.1;white-space:nowrap}
 .hero-c .big small{font-size:.45em;letter-spacing:-.01em;margin-left:.15em}
 .hero-c .rate{font-size:14px;color:var(--sub);font-weight:600}
 .hero-note{margin:0;font-size:13px;color:var(--sub);text-align:center}
@@ -376,11 +376,41 @@ h1,h2,.monthnav h1{letter-spacing:-.6px}
 .krow .kl small{font-size:12px;color:var(--sub);opacity:.85}
 .krow .kv{font-size:16px;font-weight:800;white-space:nowrap}
 
+/* ===== v62: niente barra di scorrimento, Home compatta su una schermata ===== */
+html{height:100%;overflow:hidden;background:var(--bg)}
+body{height:100%;overflow:hidden;background:var(--bg)}
+#scr{position:relative;height:100%;overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch;overscroll-behavior-y:contain;background:var(--hero) no-repeat top center/100% 520px local,var(--bg)}
+*{scrollbar-width:none}
+*::-webkit-scrollbar{display:none;width:0;height:0;background:transparent}
+.pg.fit{height:auto;min-height:100%;overflow:visible;padding-top:calc(env(safe-area-inset-top) + 10px);padding-bottom:calc(env(safe-area-inset-bottom) + 92px);gap:10px}
+#scr:has(> .pg.fit){display:flex;flex-direction:column}
+#scr > .pg.fit{flex:1 0 auto;width:100%}
+.pg.fit .hh-badge{margin-top:-2px;height:28px}
+.pg.fit .hh-hero{flex:1 1 0;min-height:176px;justify-content:center;gap:6px;padding-top:0}
+@supports (container-type:size){
+  .pg.fit .hh-hero{container-type:size}
+  .pg.fit .hero-ring{--rs:max(150px,min(236px,64vw,calc(100cqh - 26px)))}
+}
+.pg.fit .qa{flex:none}
+.pg.fit .qa a,.pg.fit .qa button{gap:6px;font-size:12px}
+.pg.fit .qa .qi{width:48px;height:48px;border-radius:24px}
+.pg.fit .qa .qi svg{width:20px;height:20px}
+.pg.fit .klist{padding:2px 16px;gap:0}
+.pg.fit .krow{min-height:42px;padding:3px 0}
+.pg.fit .krow .kl{line-height:1.3}
+.pg.fit .hero-c{padding:0 9%}
+.pg.fit .hero-c .rate{font-size:min(13px,calc(var(--rs) * .058));text-wrap:balance;line-height:1.25}
+.pg.fit .hero-c .lbl{font-size:min(14px,calc(var(--rs) * .065))}
+@media (max-height:720px){.pg.fit .krow .kl small{display:none}.pg.fit .krow{min-height:38px}.pg.fit .qa .qi{width:44px;height:44px}}
+.pg.fit .krow .kl span{font-size:14px}
+.pg.fit .krow .kl small{font-size:11.5px}
+.pg.fit .krow .kv{font-size:15px}
+
 </style>
 </head>
 <body>
 <div class="splash" id="splash" role="status" aria-live="polite" aria-label="Caricamento"><div><div class="word" aria-hidden="true"><span style="animation-delay:0.15s">b</span><span style="animation-delay:0.21s">u</span><span style="animation-delay:0.27s">d</span><span style="animation-delay:0.33s">g</span><span style="animation-delay:0.39s">e</span><span style="animation-delay:0.45s">t</span><span style="animation-delay:0.51s">.</span></div><p class="tag">Flussi di cassa · Michele</p></div><div class="bottom"><div class="row"><p id="splash-msg">Avvio…</p><span id="splash-pct" aria-hidden="true">0%</span></div><div class="track" aria-hidden="true"><div class="fill" id="splash-fill"></div></div></div></div>
-<main id="view" class="pg" aria-live="polite"></main>
+<div id="scr"><main id="view" class="pg" aria-live="polite"></main></div>
 <nav class="tabs" aria-label="Sezioni"><div class="in">
 <a href="#home" data-v="home"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 10.5L12 3l9 7.5V20a1 1 0 0 1-1 1h-5v-6h-6v6H4a1 1 0 0 1-1-1z"/></svg><span>Home</span></a>
 <a href="#dashboard" data-v="dashboard"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 20V11M10 20V4M16 20v-7M22 20H2"/></svg><span>Dashboard</span></a>
@@ -652,6 +682,8 @@ function tabOf(v){return v==='dettaglio'||v==='anno'?'dashboard':['home','dashbo
 function viewFn(){return {collega:vCollega,home:vHome,dashboard:vDashboard,anno:vAnno,dettaglio:vDettaglio,registro:vRegistro,entrate:vEntrate,altro:vAltro,dati:vDati,prospetto:vProspetto,previsioni:vPrevisioni,categorie:vCategorie,simula:vSimula}[S.view]||vHome}
 // pagina di un altro mese, senza toccare lo stato (per lo swipe)
 function htmlMese(m){const o=S.mese;S.mese=m;try{return viewFn()()}finally{S.mese=o}}
+// la pagina scorre dentro #scr (così su iPhone non compare la barra di scorrimento)
+const SCR=()=>document.getElementById('scr')||document.scrollingElement;
 function render(){
   const v=document.getElementById('view');
   document.querySelectorAll('.tabs a').forEach(a=>a.setAttribute('aria-current',a.dataset.v===tabOf(S.view)?'page':'false'));
@@ -659,6 +691,7 @@ function render(){
   if(!SYNC.api&&S.view!=='collega'){S.view='collega'}
   v.classList.remove('fit');
   v.innerHTML=viewFn()();
+  if(S.view==='home'&&cats().length)v.classList.add('fit'); // Home a pagina unica, senza scorrimento
   if(SYNC.api&&!S.chAsk&&chiusurePendenti().length){S.chAsk=true;let done=false;try{done=sessionStorage.getItem('budget-chask')==='1';sessionStorage.setItem('budget-chask','1')}catch(e){}if(!done)setTimeout(()=>{if(!document.querySelector('.sheet'))sheetChiusura()},900)}
 }
 function stateScreen(){
@@ -1496,7 +1529,7 @@ document.addEventListener('click',e=>{const b=e.target.closest&&e.target.closest
 document.addEventListener('change',e=>{const t=e.target;if(!t.dataset)return;if(t.dataset.change==='regcat'){S.regCat=t.value;render()}if(t.dataset.change==='regmet'){S.regMet=t.value;render()}});
 function saveMode(){try{localStorage.setItem('budget-mode',S.mode)}catch(e){}applyMode();render()}
 document.addEventListener('keydown',e=>{if(e.key==='Escape'&&sheetClose)sheetClose()});
-function route(){const h=(location.hash||'#home').slice(1);S.view=VIEWS.includes(h)?h:'home';if(sheetClose)sheetClose();render();window.scrollTo(0,0)}
+function route(){const h=(location.hash||'#home').slice(1);S.view=VIEWS.includes(h)?h:'home';if(sheetClose)sheetClose();render();SCR().scrollTo(0,0)}
 window.addEventListener('hashchange',route);
 document.getElementById('fab').onclick=()=>{if(S.ready&&SYNC.api)sheetAdd('uscita')};
 
@@ -1678,12 +1711,12 @@ function sheetGruppo(g){
 }
 
 // ---------- barra in basso: si riduce scorrendo verso il basso (come Revolut) ----------
-(function(){const nav=document.querySelector('.tabs');if(!nav)return;let last=window.scrollY,acc=0,tk=false;
-  const upd=()=>{tk=false;const y=Math.max(0,window.scrollY),d=y-last;last=y;
+(function(){const nav=document.querySelector('.tabs');if(!nav)return;const sc=SCR();let last=sc.scrollTop,acc=0,tk=false;
+  const upd=()=>{tk=false;const y=Math.max(0,sc.scrollTop),d=y-last;last=y;
     if(y<24){acc=0;nav.classList.remove('mini');return}
     if((d>0)!==(acc>0))acc=0;acc+=d;
     if(acc>18)nav.classList.add('mini');else if(acc<-18)nav.classList.remove('mini')};
-  window.addEventListener('scroll',()=>{if(!tk){tk=true;requestAnimationFrame(upd)}},{passive:true});
+  (sc===document.scrollingElement?window:sc).addEventListener('scroll',()=>{if(!tk){tk=true;requestAnimationFrame(upd)}},{passive:true});
   window.addEventListener('hashchange',()=>{nav.classList.remove('mini');last=0;acc=0});
 })();
 

@@ -334,11 +334,11 @@ h1,h2,.monthnav h1{letter-spacing:-.6px}
 .hh-m .ml{border:0;background:none;font-weight:800;font-size:16px;white-space:nowrap;color:var(--ink);height:42px;padding:0 4px}
 .hh-badge{align-self:center;margin-top:-4px}
 .hh-hero{display:flex;flex-direction:column;align-items:center;gap:12px;padding-top:6px}
-.hero-ring{position:relative;width:min(244px,64vw);aspect-ratio:1}
+.hero-ring{--rs:min(244px,64vw);position:relative;width:var(--rs);aspect-ratio:1}
 .hero-ring svg{display:block;width:100%;height:100%}
 .hero-c{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:0 22px}
 .hero-c .lbl{font-size:15px;font-weight:600;color:var(--sub)}
-.hero-c .big{font-size:min(58px,calc(min(244px,64vw) * 1.25 / var(--len,6)));font-weight:700;letter-spacing:-.045em;line-height:1.1;white-space:nowrap}
+.hero-c .big{font-size:min(58px,calc(var(--rs) * 1.25 / var(--len,6)));font-weight:700;letter-spacing:-.045em;line-height:1.1;white-space:nowrap}
 .hero-c .big small{font-size:.45em;letter-spacing:-.01em;margin-left:.15em}
 .hero-c .rate{font-size:14px;color:var(--sub);font-weight:600}
 .hero-note{margin:0;font-size:13px;color:var(--sub);text-align:center}
@@ -354,3 +354,33 @@ h1,h2,.monthnav h1{letter-spacing:-.6px}
 .krow .kl span{font-size:15px;font-weight:600;color:var(--sub)}
 .krow .kl small{font-size:12px;color:var(--sub);opacity:.85}
 .krow .kv{font-size:16px;font-weight:800;white-space:nowrap}
+
+/* ===== v62: niente barra di scorrimento, Home compatta su una schermata ===== */
+html{height:100%;overflow:hidden;background:var(--bg)}
+body{height:100%;overflow:hidden;background:var(--bg)}
+#scr{position:relative;height:100%;overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch;overscroll-behavior-y:contain;background:var(--hero) no-repeat top center/100% 520px local,var(--bg)}
+*{scrollbar-width:none}
+*::-webkit-scrollbar{display:none;width:0;height:0;background:transparent}
+.pg.fit{height:auto;min-height:100%;overflow:visible;padding-top:calc(env(safe-area-inset-top) + 10px);padding-bottom:calc(env(safe-area-inset-bottom) + 92px);gap:10px}
+#scr:has(> .pg.fit){display:flex;flex-direction:column}
+#scr > .pg.fit{flex:1 0 auto;width:100%}
+.pg.fit .hh-badge{margin-top:-2px;height:28px}
+.pg.fit .hh-hero{flex:1 1 0;min-height:176px;justify-content:center;gap:6px;padding-top:0}
+@supports (container-type:size){
+  .pg.fit .hh-hero{container-type:size}
+  .pg.fit .hero-ring{--rs:max(150px,min(236px,64vw,calc(100cqh - 26px)))}
+}
+.pg.fit .qa{flex:none}
+.pg.fit .qa a,.pg.fit .qa button{gap:6px;font-size:12px}
+.pg.fit .qa .qi{width:48px;height:48px;border-radius:24px}
+.pg.fit .qa .qi svg{width:20px;height:20px}
+.pg.fit .klist{padding:2px 16px;gap:0}
+.pg.fit .krow{min-height:42px;padding:3px 0}
+.pg.fit .krow .kl{line-height:1.3}
+.pg.fit .hero-c{padding:0 9%}
+.pg.fit .hero-c .rate{font-size:min(13px,calc(var(--rs) * .058));text-wrap:balance;line-height:1.25}
+.pg.fit .hero-c .lbl{font-size:min(14px,calc(var(--rs) * .065))}
+@media (max-height:720px){.pg.fit .krow .kl small{display:none}.pg.fit .krow{min-height:38px}.pg.fit .qa .qi{width:44px;height:44px}}
+.pg.fit .krow .kl span{font-size:14px}
+.pg.fit .krow .kl small{font-size:11.5px}
+.pg.fit .krow .kv{font-size:15px}

@@ -75,6 +75,8 @@ function tabOf(v){return v==='dettaglio'||v==='anno'?'dashboard':['home','dashbo
 function viewFn(){return {collega:vCollega,home:vHome,dashboard:vDashboard,anno:vAnno,dettaglio:vDettaglio,registro:vRegistro,entrate:vEntrate,altro:vAltro,dati:vDati,prospetto:vProspetto,previsioni:vPrevisioni,categorie:vCategorie,simula:vSimula}[S.view]||vHome}
 // pagina di un altro mese, senza toccare lo stato (per lo swipe)
 function htmlMese(m){const o=S.mese;S.mese=m;try{return viewFn()()}finally{S.mese=o}}
+// la pagina scorre dentro #scr (così su iPhone non compare la barra di scorrimento)
+const SCR=()=>document.getElementById('scr')||document.scrollingElement;
 function render(){
   const v=document.getElementById('view');
   document.querySelectorAll('.tabs a').forEach(a=>a.setAttribute('aria-current',a.dataset.v===tabOf(S.view)?'page':'false'));
@@ -82,6 +84,7 @@ function render(){
   if(!SYNC.api&&S.view!=='collega'){S.view='collega'}
   v.classList.remove('fit');
   v.innerHTML=viewFn()();
+  if(S.view==='home'&&cats().length)v.classList.add('fit'); // Home a pagina unica, senza scorrimento
   if(SYNC.api&&!S.chAsk&&chiusurePendenti().length){S.chAsk=true;let done=false;try{done=sessionStorage.getItem('budget-chask')==='1';sessionStorage.setItem('budget-chask','1')}catch(e){}if(!done)setTimeout(()=>{if(!document.querySelector('.sheet'))sheetChiusura()},900)}
 }
 function stateScreen(){
@@ -919,7 +922,7 @@ document.addEventListener('click',e=>{const b=e.target.closest&&e.target.closest
 document.addEventListener('change',e=>{const t=e.target;if(!t.dataset)return;if(t.dataset.change==='regcat'){S.regCat=t.value;render()}if(t.dataset.change==='regmet'){S.regMet=t.value;render()}});
 function saveMode(){try{localStorage.setItem('budget-mode',S.mode)}catch(e){}applyMode();render()}
 document.addEventListener('keydown',e=>{if(e.key==='Escape'&&sheetClose)sheetClose()});
-function route(){const h=(location.hash||'#home').slice(1);S.view=VIEWS.includes(h)?h:'home';if(sheetClose)sheetClose();render();window.scrollTo(0,0)}
+function route(){const h=(location.hash||'#home').slice(1);S.view=VIEWS.includes(h)?h:'home';if(sheetClose)sheetClose();render();SCR().scrollTo(0,0)}
 window.addEventListener('hashchange',route);
 document.getElementById('fab').onclick=()=>{if(S.ready&&SYNC.api)sheetAdd('uscita')};
 route();start();
@@ -1101,12 +1104,12 @@ function sheetGruppo(g){
 }
 
 // ---------- barra in basso: si riduce scorrendo verso il basso (come Revolut) ----------
-(function(){const nav=document.querySelector('.tabs');if(!nav)return;let last=window.scrollY,acc=0,tk=false;
-  const upd=()=>{tk=false;const y=Math.max(0,window.scrollY),d=y-last;last=y;
+(function(){const nav=document.querySelector('.tabs');if(!nav)return;const sc=SCR();let last=sc.scrollTop,acc=0,tk=false;
+  const upd=()=>{tk=false;const y=Math.max(0,sc.scrollTop),d=y-last;last=y;
     if(y<24){acc=0;nav.classList.remove('mini');return}
     if((d>0)!==(acc>0))acc=0;acc+=d;
     if(acc>18)nav.classList.add('mini');else if(acc<-18)nav.classList.remove('mini')};
-  window.addEventListener('scroll',()=>{if(!tk){tk=true;requestAnimationFrame(upd)}},{passive:true});
+  (sc===document.scrollingElement?window:sc).addEventListener('scroll',()=>{if(!tk){tk=true;requestAnimationFrame(upd)}},{passive:true});
   window.addEventListener('hashchange',()=>{nav.classList.remove('mini');last=0;acc=0});
 })();
 
