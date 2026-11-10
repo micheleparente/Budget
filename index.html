@@ -302,6 +302,14 @@ table.yt .plus{font-style:normal;color:var(--pos);font-weight:800;margin-left:2p
 .cmp.e3{grid-template-columns:1fr auto}
 .cmp.c4{grid-template-columns:1fr auto auto auto}
 
+/* Ricerca Registro: X per cancellare */
+.qwrap{position:relative}
+.qwrap input#reg-q{padding-right:52px}
+.qwrap input#reg-q::-webkit-search-cancel-button{-webkit-appearance:none;appearance:none;display:none}
+.qclear{position:absolute;right:4px;top:50%;transform:translateY(-50%);width:44px;height:44px;display:flex;align-items:center;justify-content:center;border:0;background:transparent;color:#ff3b30;padding:0;cursor:pointer;-webkit-tap-highlight-color:transparent}
+.qclear[hidden]{display:none}
+.qclear:active{opacity:.6}
+
 </style>
 </head>
 <body>
@@ -826,7 +834,7 @@ function vRegistro(){
   const budR=budResiduo(S.anno,S.mese,'tutte');const pre=r2(all.filter(r=>r.stato!=='effettivo'&&r.k!=='stip').reduce((a,r)=>a+r.importo,0)+budR);
   const nDc=all.filter(r=>r.stato==='daconfermare').length;
   const fl=[['tutti','Tutti'],['uscite','Uscite'],['entrate','Entrate'],['previsti','Previsti'],['daconf','Da confermare']];
-  const chips=`<div class="seg fit" role="group" aria-label="Filtro">${fl.map(([k,l])=>`<button data-act="regf" data-k="${k}" aria-pressed="${F===k}">${l}</button>`).join('')}</div><div class="two"><div class="field"><label for="reg-cat" class="sr">Categoria</label><select id="reg-cat" data-change="regcat"><option value="tutte">Categorie</option>${catsAnno().map(c=>`<option value="${esc(c.id)}" ${S.regCat===c.id?'selected':''}>${esc(c.nome)}</option>`).join('')}</select></div><div class="field"><label for="reg-met" class="sr">Metodo di pagamento</label><select id="reg-met" data-change="regmet"><option value="tutti">Metodi</option>${metodi().map(m=>`<option value="${esc(m)}" ${S.regMet===m?'selected':''}>${esc(m)}</option>`).join('')}</select></div></div><div class="field"><label for="reg-q" class="sr">Cerca per descrizione</label><input id="reg-q" type="search" enterkeyhint="search" autocomplete="off" placeholder="Cerca per descrizione" value="${esc(S.regQ||'')}" data-input="regq"></div>`;
+  const chips=`<div class="seg fit" role="group" aria-label="Filtro">${fl.map(([k,l])=>`<button data-act="regf" data-k="${k}" aria-pressed="${F===k}">${l}</button>`).join('')}</div><div class="two"><div class="field"><label for="reg-cat" class="sr">Categoria</label><select id="reg-cat" data-change="regcat"><option value="tutte">Categorie</option>${catsAnno().map(c=>`<option value="${esc(c.id)}" ${S.regCat===c.id?'selected':''}>${esc(c.nome)}</option>`).join('')}</select></div><div class="field"><label for="reg-met" class="sr">Metodo di pagamento</label><select id="reg-met" data-change="regmet"><option value="tutti">Metodi</option>${metodi().map(m=>`<option value="${esc(m)}" ${S.regMet===m?'selected':''}>${esc(m)}</option>`).join('')}</select></div></div><div class="field"><label for="reg-q" class="sr">Cerca per descrizione</label><div class="qwrap"><input id="reg-q" type="search" enterkeyhint="search" autocomplete="off" placeholder="Cerca per descrizione" value="${esc(S.regQ||'')}" data-input="regq"><button type="button" class="qclear" data-qclear aria-label="Cancella ricerca" ${S.regQ?'':'hidden'}><svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"/></svg></button></div></div>`;
   const bud=S.D.previsioni.filter(p=>p.anno===S.anno&&p.tipo==='budget'&&p.importi&&p.importi[S.mese-1]!=null&&(S.regCat==='tutte'||p.categoria===S.regCat));
   const yc=Y();
   const budRows=bud.map(p=>{const c=yc.cat.find(x=>x.id===p.categoria);const usato=c?c.reale[S.mese-1]:0;const b=+p.importi[S.mese-1];const pc=Math.min(100,b?usato/b*100:0);const ch=budgetChiuso(p,S.mese),daCh=!ch&&monthState(S.anno,S.mese,today())==='chiuso';
@@ -1301,7 +1309,10 @@ document.addEventListener('click',async e=>{
     case 'syncnow':flush().then(()=>toast(syncLine()));break;
   }
 });
-document.addEventListener('input',e=>{const t=e.target;if(t&&t.dataset&&t.dataset.input==='regq'){S.regQ=t.value;const box=document.getElementById('reg-res');if(box)box.innerHTML=regRisultati()}});
+document.addEventListener('input',e=>{const t=e.target;if(t&&t.dataset&&t.dataset.input==='regq'){S.regQ=t.value;const cb=document.querySelector('[data-qclear]');if(cb)cb.hidden=!t.value;const box=document.getElementById('reg-res');if(box)box.innerHTML=regRisultati()}});
+// X nella ricerca del Registro: svuota il testo e lascia il campo attivo
+document.addEventListener('pointerdown',e=>{if(e.target.closest&&e.target.closest('[data-qclear]'))e.preventDefault()});
+document.addEventListener('click',e=>{const b=e.target.closest&&e.target.closest('[data-qclear]');if(!b)return;e.preventDefault();e.stopPropagation();S.regQ='';const i=document.getElementById('reg-q');if(i){i.value='';i.focus()}b.hidden=true;const box=document.getElementById('reg-res');if(box)box.innerHTML=regRisultati()},true);
 document.addEventListener('change',e=>{const t=e.target;if(!t.dataset)return;if(t.dataset.change==='regcat'){S.regCat=t.value;render()}if(t.dataset.change==='regmet'){S.regMet=t.value;render()}});
 function saveMode(){try{localStorage.setItem('budget-mode',S.mode)}catch(e){}applyMode();render()}
 document.addEventListener('keydown',e=>{if(e.key==='Escape'&&sheetClose)sheetClose()});
