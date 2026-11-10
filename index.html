@@ -244,6 +244,12 @@ tr.click{cursor:pointer}
 .tile.hero .simtag{color:inherit;opacity:.8}
 .tile .t-sim{position:absolute;top:10px;right:10px;height:18px;font-size:9.5px;padding:0 6px}
 .tile.hero .t-sim{background:rgba(255,255,255,.22);color:inherit}
+.yr-btn{display:inline-flex;align-items:center;gap:3px;font:inherit;color:var(--accent);font-weight:700;background:var(--chip);border:0;border-radius:10px;padding:3px 8px;margin-left:2px;min-height:26px;cursor:pointer}
+.yr-grid{display:flex;flex-direction:column;gap:10px}
+.yr-grid .pill-btn{justify-content:center;min-height:52px;font-size:17px}
+.hd .eyebrow{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+.hd .eyebrow .dc-badge{margin-left:2px;height:26px;padding:0 10px;font-size:11.5px}
+.monthnav h1{white-space:nowrap}
 
 </style>
 </head>
@@ -518,7 +524,7 @@ function header(title,opts={}){
   const modeIcon=S.mode==='dark'?ICON.moon:S.mode==='light'?ICON.sun:ICON.auto;
   const modeLbl=S.mode==='dark'?'Tema scuro, tocca per automatico':S.mode==='light'?'Tema chiaro, tocca per scuro':'Tema automatico, tocca per chiaro';
   const nDc=S.ready&&cats().length?Y().ist.filter(i=>i.stato==='daconfermare').length:0;const badge=nDc&&opts.badge!==false?`<button class="dc-badge" data-act="godaconf" aria-label="${nDc} ${nDc===1?'voce':'voci'} da confermare">${nDc} da confermare</button>`:'';
-  return `<div class="hd"><div style="min-width:0"><p class="eyebrow">${esc(title)} · ${S.anno}</p>${nav?`<div class="monthnav"><button class="ghost" data-act="mprev" aria-label="Mese precedente" ${S.mese<=1?'disabled':''}>${ICON.prev}</button><h1>${MESI[S.mese-1]}</h1><button class="ghost" data-act="mnext" aria-label="Mese successivo" ${S.mese>=12?'disabled':''}>${ICON.next}</button></div>`:`<h1 style="font-size:26px;font-weight:800;letter-spacing:-.5px">${esc(opts.h||title)}</h1>`}</div><div style="display:flex;gap:8px;align-items:center">${badge}<button class="icon-btn" data-act="mode" aria-label="${modeLbl}">${modeIcon}</button></div></div>`;
+  return `<div class="hd"><div style="min-width:0"><p class="eyebrow">${esc(title)} · <button class="yr-btn" data-act="pickyear" aria-label="Anno ${S.anno}, tocca per cambiare">${S.anno}<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg></button>${badge}</p>${nav?`<div class="monthnav"><button class="ghost" data-act="mprev" aria-label="Mese precedente" ${S.mese<=1?'disabled':''}>${ICON.prev}</button><h1>${MESI[S.mese-1]}</h1><button class="ghost" data-act="mnext" aria-label="Mese successivo" ${S.mese>=12?'disabled':''}>${ICON.next}</button></div>`:`<h1 style="font-size:26px;font-weight:800;letter-spacing:-.5px">${esc(opts.h||title)}</h1>`}</div><div style="display:flex;gap:8px;align-items:center"><button class="icon-btn" data-act="mode" aria-label="${modeLbl}">${modeIcon}</button></div></div>`;
 }
 function media(c,anno){const idx=[...Array(12).keys()].filter(i=>monthState(anno,i+1,today())==='chiuso');const use=idx.length?idx:[...Array(12).keys()];return r2(use.reduce((a,i)=>a+c.mesi[i],0)/use.length)}
 function statoChip(s){return s==='effettivo'?'<span class="chip ok">PAGATA</span>':s==='daconfermare'?'<span class="chip warn">DA CONFERMARE</span>':'<span class="chip sim">PREVISTA</span>'}
@@ -1053,6 +1059,8 @@ document.addEventListener('click',async e=>{
     case 'editmet1':sheetMet(+id);break;
     case 'metmove':moveMet(+id,+k);break;
     case 'add':sheetAdd(k||'uscita');break;
+    case 'pickyear':sheetAnno();break;
+    case 'setanno':setAnno(+k);break;
     case 'anno':S.anno=+k;S.mese=S.anno===today().getFullYear()?today().getMonth()+1:1;if(S.view!=='home')location.hash='#home';else render();break;
     case 'creaanno':creaAnno(+k);break;
     case 'simspesa':sheetSimSpesa();break;
@@ -1100,6 +1108,14 @@ function sheetEcat(id){
   });
 }
 async function moveEcat(id,dir){const cf=cfgCopy();const arr=cf.entrate.sort((a,b)=>a.ordine-b.ordine);const i=arr.findIndex(c=>c.id===id),j=i+dir;if(i<0||j<0||j>=arr.length)return;[arr[i],arr[j]]=[arr[j],arr[i]];arr.forEach((c,k)=>c.ordine=k);cf.entrate=arr;await saveConfig(cf)}
+function setAnno(a){S.anno=a;S.mese=a===today().getFullYear()?today().getMonth()+1:(S.mese||1);render()}
+function sheetAnno(){
+  const yrs=anni(),cur=today().getFullYear(),nx=yrs.find(a=>a>cur&&!haDati(a));
+  openSheet('Anno',`<div class="yr-grid">${yrs.map(a=>`<button class="pill-btn ${a===S.anno?'':'soft'}" data-y="${a}">${a}${a===today().getFullYear()?' · in corso':haDati(a)?'':' · vuoto'}</button>`).join('')}</div>${nx?`<button class="link" id="yr-crea" style="align-self:center;margin-top:6px">Crea previsionale ${nx} dal ${nx-1}</button>`:''}`,(el,close)=>{
+    if(nx)el.querySelector('#yr-crea').onclick=()=>{close();creaAnno(nx)};
+    el.querySelectorAll('[data-y]').forEach(b=>b.onclick=()=>{close();setAnno(+b.dataset.y)});
+  },{compact:true});
+}
 function sheetMet(i){
   const old=i==null?'':metodi()[i];const n=old?S.D.movimenti.filter(x=>x.metodo===old).length+S.D.previsioni.filter(x=>x.metodo===old).length:0;
   openSheet(old?'Modifica metodo':'Nuovo metodo di pagamento',`<form id="f-mt" novalidate style="display:flex;flex-direction:column;gap:14px"><div class="field"><label for="mt-n">Nome</label><input id="mt-n" value="${esc(old)}" ${old?'':'data-autofocus'} placeholder="Es. Satispay"></div>${n?`<p class="note">Usato in ${n} tra movimenti e previsioni: se lo rinomini li aggiorno tutti.</p>`:''}<div class="actions">${old?`<button class="pill-btn danger" type="button" id="mt-del">Elimina</button>`:''}<button class="pill-btn" type="submit">Salva</button></div></form>`,(el,close)=>{
