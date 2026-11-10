@@ -1312,9 +1312,9 @@ document.addEventListener('click',async e=>{
 document.addEventListener('input',e=>{const t=e.target;if(t&&t.dataset&&t.dataset.input==='regq'){S.regQ=t.value;const cb=document.querySelector('[data-qclear]');if(cb)cb.hidden=!t.value;const box=document.getElementById('reg-res');if(box)box.innerHTML=regRisultati()}});
 // Tasto Cerca della tastiera: chiude la tastiera
 document.addEventListener('keydown',e=>{const t=e.target;if(t&&t.id==='reg-q'&&(e.key==='Enter'||e.keyCode===13)){e.preventDefault();t.blur()}});
-// X nella ricerca del Registro: svuota il testo e lascia il campo attivo
+// X nella ricerca del Registro: svuota il testo; la tastiera resta com'era (aperta se lo era, altrimenti non compare)
 document.addEventListener('pointerdown',e=>{if(e.target.closest&&e.target.closest('[data-qclear]'))e.preventDefault()});
-document.addEventListener('click',e=>{const b=e.target.closest&&e.target.closest('[data-qclear]');if(!b)return;e.preventDefault();e.stopPropagation();S.regQ='';const i=document.getElementById('reg-q');if(i){i.value='';i.focus()}b.hidden=true;const box=document.getElementById('reg-res');if(box)box.innerHTML=regRisultati()},true);
+document.addEventListener('click',e=>{const b=e.target.closest&&e.target.closest('[data-qclear]');if(!b)return;e.preventDefault();e.stopPropagation();S.regQ='';const i=document.getElementById('reg-q');if(i)i.value='';b.hidden=true;const box=document.getElementById('reg-res');if(box)box.innerHTML=regRisultati()},true);
 document.addEventListener('change',e=>{const t=e.target;if(!t.dataset)return;if(t.dataset.change==='regcat'){S.regCat=t.value;render()}if(t.dataset.change==='regmet'){S.regMet=t.value;render()}});
 function saveMode(){try{localStorage.setItem('budget-mode',S.mode)}catch(e){}applyMode();render()}
 document.addEventListener('keydown',e=>{if(e.key==='Escape'&&sheetClose)sheetClose()});
