@@ -282,6 +282,25 @@ html,body{overflow-x:clip}
 .plist{margin:0;padding-left:18px;display:flex;flex-direction:column;gap:3px;font-size:14px}
 .plist.muted{color:var(--sub)}
 .cb-text{margin:0}
+/* Dashboard dell'anno */
+.seg.vista{margin:0 0 2px}
+table.yt{width:100%;min-width:0;table-layout:fixed;font-size:12.5px;font-variant-numeric:tabular-nums}
+table.yt th,table.yt td{padding:9px 2px;position:static;background:none;max-width:none}
+table.yt th:first-child,table.yt td:first-child{width:46px;text-align:left;font-weight:700}
+table.yt tr.cur td{background:var(--chip)}
+table.yt tr.cur td:first-child{border-radius:8px 0 0 8px} table.yt tr.cur td:last-child{border-radius:0 8px 8px 0}
+table.yt tr.fut td{color:var(--sub);font-style:italic}
+table.yt tr.fut td.neg{color:color-mix(in srgb,var(--neg) 70%,var(--sub))} table.yt tr.fut td.pos{color:color-mix(in srgb,var(--pos) 70%,var(--sub))}
+table.yt tr.click{cursor:pointer}
+table.yt .plus{font-style:normal;color:var(--pos);font-weight:800;margin-left:2px}
+.catrow.yc .nm{display:flex;align-items:center;gap:8px;min-width:0}
+.catrow.yc .nm .dot{flex:none}
+.catrow.yc .l2{align-items:center;gap:12px;margin-top:4px}
+.catrow.yc .spark{flex:none}
+.catrow.yc .mm{display:flex;flex-direction:column;align-items:flex-end;gap:1px;text-align:right}
+.catrow.yc .mm b{font-weight:700;color:var(--ink)}
+.cmp.e3{grid-template-columns:1fr auto}
+.cmp.c4{grid-template-columns:1fr auto auto auto}
 
 </style>
 </head>
@@ -551,9 +570,9 @@ function clean(o){const d=Object.assign({},o);delete d.id;return d}
 
 // ---------- render ----------
 let raf=0;function schedule(){if(!raf)raf=requestAnimationFrame(()=>{raf=0;render()})}
-const VIEWS=['collega','home','dashboard','dettaglio','registro','entrate','altro','prospetto','previsioni','categorie','simula','dati'];
-function tabOf(v){return v==='dettaglio'?'dashboard':['home','dashboard','registro'].includes(v)?v:'altro'}
-function viewFn(){return {collega:vCollega,home:vHome,dashboard:vDashboard,dettaglio:vDettaglio,registro:vRegistro,entrate:vEntrate,altro:vAltro,dati:vDati,prospetto:vProspetto,previsioni:vPrevisioni,categorie:vCategorie,simula:vSimula}[S.view]||vHome}
+const VIEWS=['collega','home','dashboard','dettaglio','registro','entrate','altro','anno','prospetto','previsioni','categorie','simula','dati'];
+function tabOf(v){return v==='dettaglio'||v==='anno'?'dashboard':['home','dashboard','registro'].includes(v)?v:'altro'}
+function viewFn(){return {collega:vCollega,home:vHome,dashboard:vDashboard,anno:vAnno,dettaglio:vDettaglio,registro:vRegistro,entrate:vEntrate,altro:vAltro,dati:vDati,prospetto:vProspetto,previsioni:vPrevisioni,categorie:vCategorie,simula:vSimula}[S.view]||vHome}
 // pagina di un altro mese, senza toccare lo stato (per lo swipe)
 function htmlMese(m){const o=S.mese;S.mese=m;try{return viewFn()()}finally{S.mese=o}}
 function render(){
@@ -675,7 +694,7 @@ function vDashboard(){
   const nx=S.anno+1;let nextCard;
   if(previsionaleCreato(nx)){const yn=Y(nx);nextCard=`<section class="card"><div class="row-head"><div><p class="eyebrow">Previsionale ${nx}</p><span class="num ${yn.mesi[11].avanzo<0?'neg':'pos'}" style="font-size:22px;font-weight:800">${sgn(yn.mesi[11].avanzo)}</span><p class="note">Avanzo stimato a fine ${nx} · spese ${eur(yn.mesi.reduce((a,x)=>a+x.spese,0))}</p></div><button class="pill-btn soft" data-act="anno" data-k="${nx}">Apri</button></div></section>`}
   else nextCard=`<section class="card"><div class="row-head"><div><p class="eyebrow">Previsionale ${nx}</p><p class="note">Copia previsioni e netti del ${S.anno} come simulazione.</p></div><button class="pill-btn soft" data-act="creaanno" data-k="${nx}">Crea</button></div></section>`;
-  return header('Dashboard',{badge:false})+banner+saldiChart(y)+proj+scad+dove+conf+avanzoChart(y)+nextCard;
+  return header('Dashboard',{badge:false})+vistaSeg('dashboard')+banner+saldiChart(y)+proj+scad+dove+conf+avanzoChart(y)+nextCard;
 }
 // dettaglio di una categoria
 function vDettaglio(){
@@ -687,11 +706,52 @@ function vDettaglio(){
   const my=(H-16-med/mx*(H-30)).toFixed(1);
   const rows=righeMese(S.anno,S.mese).filter(r=>r.cat===c.id);
   const prv=S.D.previsioni.filter(p=>p.anno===S.anno&&p.categoria===c.id);
-  return `<div class="hd"><div style="min-width:0"><a class="eyebrow" href="#dashboard" style="text-decoration:none;color:var(--accent-ink)">‹ Dashboard</a><h1 style="font-size:24px;font-weight:800;letter-spacing:-.4px">${esc(c.nome)}</h1></div></div>
+  return `<div class="hd"><div style="min-width:0"><a class="eyebrow" href="#${S.detFrom==='anno'?'anno':'dashboard'}" style="text-decoration:none;color:var(--accent-ink)">‹ ${S.detFrom==='anno'?'Anno '+S.anno:'Dashboard'}</a><h1 style="font-size:24px;font-weight:800;letter-spacing:-.4px">${esc(c.nome)}</h1></div></div>
   <section class="card"><div class="tiles"><div class="tile hero"><span class="t-l">${MESI[S.mese-1]}</span><span class="t-v num">${eur(cur)}</span><span class="t-n">${med?((cur>med?'+':'')+Math.round((cur-med)/med*100)+'% sulla media'):'—'}</span></div><div class="tile"><span class="t-l">Totale ${S.anno}</span><span class="t-v num">${eur(tot)}</span><span class="t-n">Media ${eur(med)}/mese</span></div></div>
   <svg viewBox="0 0 ${W} ${H}" width="100%" role="img" aria-label="Spesa mese per mese in ${esc(c.nome)}">${bars}<line x1="4" x2="${W-4}" y1="${my}" y2="${my}" stroke="var(--neg)" stroke-width="1.5" stroke-dasharray="4 4"/>${[0,3,6,9,11].map(i=>`<text x="${(8+i*(W-16)/12+9).toFixed(1)}" y="${H-3}" font-size="10" fill="var(--sub)" text-anchor="middle">${MB[i]}</text>`).join('')}</svg><p class="note">Barre chiare: mesi futuri (previsione). Tratteggio: media.</p></section>
   <p class="sec-title">Movimenti di ${MESI[S.mese-1]}</p><section class="card tight"><div class="list">${rows.map(r=>r.k==='ist'?istRow(r.i):`<button class="item" data-act="editmov" data-id="${esc(r.x.id)}"><span class="grow"><span class="t">${esc(r.x.descrizione)}</span><span class="s">${r.x.tipo==='reso'?'Storno / reso · ':''}${fmtDate(r.x.data)}${r.x.metodo?' · '+esc(r.x.metodo):''}${r.x.quota?' · quota '+esc(r.x.quota):''}</span></span><span class="amt ${r.entrata?'pos':''}">${r.entrata?'+':'−'}${eur(r.importo)}</span></button>`).join('')||'<p class="empty">Nessun movimento in questo mese.</p>'}</div></section>
   ${prv.length?`<p class="sec-title">Previsioni</p><section class="card tight"><div class="list">${prv.map(p=>`<button class="item" data-act="editprev" data-id="${esc(p.id)}"><span class="grow"><span class="t">${esc(p.descrizione)}</span><span class="s">${TIPI[p.tipo]} · ${mesiLabel(p.importi)}</span></span>${ICON.chev}</button>`).join('')}</div></section>`:''}`;
+}
+// ---------- Dashboard dell'anno: controllo totale (come il prospetto Excel) ----------
+function vistaSeg(v){return `<div class="seg vista" role="group" aria-label="Vista della dashboard"><button data-act="vista" data-k="dashboard" aria-pressed="${v==='dashboard'}">Mese</button><button data-act="vista" data-k="anno" aria-pressed="${v==='anno'}">Anno</button></div>`}
+function sparkCat(c,y){
+  const W=84,H=26,bw=5,step=W/12;const mx=Math.max(0.01,...c.mesi.map(v=>Math.abs(v)));
+  const cur=today().getFullYear()===S.anno?today().getMonth():-1;
+  return `<svg class="spark" viewBox="0 0 ${W} ${H}" width="${W}" height="${H}" aria-hidden="true">${c.mesi.map((v,i)=>{const h=v>0?Math.max(2,v/mx*(H-2)):0;const fut=y.mesi[i].stato==='futuro';return `<rect x="${(i*step+(step-bw)/2).toFixed(1)}" y="${(H-h).toFixed(1)}" width="${bw}" height="${h.toFixed(1)}" rx="1.5" fill="${i===cur?'var(--ink)':fut?'var(--line)':'var(--accent)'}"/>`}).join('')}<line x1="0" x2="${W}" y1="${H-.5}" y2="${H-.5}" stroke="var(--line)"/></svg>`;
+}
+function vAnno(){
+  if(!cats().length)return header('Dashboard')+onboarding();
+  const y=Y(),M=y.mesi,t=today();
+  const ix=S.anno===t.getFullYear()?t.getMonth():S.anno<t.getFullYear()?11:-1;
+  const sum=(a,k)=>r2(a.reduce((s,x)=>s+x[k],0));
+  const ent=sum(M,'disp'),spe=sum(M,'spese'),fine=M[11].avanzo,fis=sum(M,'fisse');
+  const tasso=ent>0?Math.round(fine/ent*1000)/10:null;
+  const pos=M.filter(m=>m.saldo>=0).length;
+  const fatti=M.filter(m=>m.stato!=='futuro'),speF=sum(fatti,'spese'),speP=r2(spe-speF);
+  const nSim=Object.values(y.netti).filter(n=>n.stato==='simulato').length;
+  const spot=sum(M,'spot');
+  // in cima: fine anno
+  const top=`<section class="card"><div class="row-head"><div><p class="eyebrow">Avanzo a fine ${S.anno}</p><span class="num ${fine<0?'neg':'pos'}" style="font-size:30px;font-weight:800;letter-spacing:-.6px">${sgn(fine)}</span></div>${ix>=0&&ix<11?`<div style="text-align:right"><p class="eyebrow">A ${MESI[ix]}</p><span class="num ${M[ix].avanzo<0?'neg':'pos'}" style="font-size:17px;font-weight:800">${sgn(M[ix].avanzo)}</span></div>`:''}</div>
+  <div class="tiles"><div class="tile"><span class="t-l">Entrate anno</span><span class="t-v num">${eur(ent)}</span><span class="t-n">${nSim?`${nSim} ${nSim===1?'netto stimato':'netti stimati'}`:'netti confermati'}</span></div><div class="tile"><span class="t-l">Spese anno</span><span class="t-v num">${eur(spe)}</span><span class="t-n">media ${eur(r2(spe/12))}/mese</span></div><div class="tile"><span class="t-l">Risparmio</span><span class="t-v num ${fine<0?'neg':''}">${tasso==null?'—':(tasso<0?'−':'')+String(Math.abs(tasso)).replace('.',',')+'%'}</span><span class="t-n">delle entrate</span></div><div class="tile"><span class="t-l">Mesi in positivo</span><span class="t-v num">${pos} su 12</span><span class="t-n">${12-pos} in negativo</span></div></div>
+  ${speP>0.004?`<p class="note" style="margin-top:10px">Delle spese, ${eur(speF)} sono${fatti.length?` da Gennaio a ${MESI[fatti.length-1]}`:''} e ${eur(speP)} previste nei mesi che mancano.</p>`:''}</section>`;
+  // mese per mese
+  const cell=(v,cls='')=>`<td class="${cls}">${Math.abs(v)<0.005?'–':n2(v)}</td>`;
+  const rows=M.map((m,i)=>`<tr class="click ${i===ix?'cur':''} ${m.stato==='futuro'?'fut':''}" data-act="apmese" data-k="${m.m}"><td>${MB[i]}${m.spot>0.004||(i===0&&y.riporto)?'<i class="plus" aria-label="con entrate extra">+</i>':''}</td>${cell(m.disp)}${cell(m.spese)}${cell(m.saldo,m.saldo<0?'neg':'pos')}${cell(m.avanzo,m.avanzo<0?'neg':'pos')}</tr>`).join('');
+  const mpm=`<section class="card tight" aria-label="Mese per mese"><div class="row-head" style="padding:14px 0 4px"><h2>Mese per mese</h2><span class="small muted">tocca un mese</span></div><table class="yt"><thead><tr><th>Mese</th><th>Entrate</th><th>Spese</th><th>Saldo</th><th>Avanzo</th></tr></thead><tbody>${rows}<tr class="tot"><td>Tot.</td>${cell(ent)}${cell(spe)}${cell(fine,fine<0?'neg':'pos')}<td></td></tr></tbody></table><p class="note" style="padding:8px 0 14px">${ix>=0?'Evidenziato il mese in corso. ':''}In corsivo i mesi futuri (previsione). <b>+</b> = entrate extra o riporto. Saldo = entrate − spese del mese; Avanzo = somma dei saldi da Gennaio.</p></section>`;
+  // categorie nell'anno
+  const tipoCol={fissa:'var(--fixed)',variabile:'var(--var)',investimento:'var(--pos)',simulazione:'var(--sub)'};
+  const all=catsAnno().map(cc=>{const c=y.cat.find(x=>x.id===cc.id);return c&&{c,tipo:cc.tipo,tot:r2(c.mesi.reduce((a,b)=>a+b,0))}}).filter(Boolean);
+  const piene=all.filter(x=>Math.abs(x.tot)>0.004),vuote=all.length-piene.length;
+  const shown=S.annoZero?all:piene;
+  const catCard=`<section class="card" aria-label="Categorie nell'anno"><div class="row-head"><h2>Categorie nell'anno</h2><span class="small muted">totale e media</span></div>${splitBar({spese:spe,fisse:fis,variabili:r2(spe-fis)})}<div style="margin-top:6px">${shown.map(x=>{const pc=spe>0?Math.round(x.tot/spe*100):0;const med=media(x.c,S.anno);return `<button class="catrow yc" data-act="dettcat" data-id="${esc(x.c.id)}"><span class="l1"><span class="nm"><i class="dot" style="background:${tipoCol[x.tipo]||'var(--var)'}"></i>${esc(x.c.nome)}</span><span class="num">${eur(x.tot)}</span></span><span class="l2">${sparkCat(x.c,y)}<span class="mm"><span>Media <b class="num">${n2(med)}</b> · 12 mesi <b class="num">${n2(r2(x.tot/12))}</b></span><span>${pc}% delle spese</span></span></span></button>`}).join('')||'<p class="empty">Nessuna spesa in questo anno.</p>'}</div>${vuote?`<button class="link" data-act="annozero">${S.annoZero?'Nascondi le categorie a zero':`Mostra anche le categorie a zero (${vuote})`}</button>`:''}<p class="note">Media = mesi chiusi; 12 mesi = totale / 12. Barre: in blu i mesi passati, in grigio i futuri, scura il mese in corso.</p></section>`;
+  // entrate
+  const entCard=`<section class="card" aria-label="Entrate dell'anno"><div class="row-head"><h2>Entrate dell'anno</h2><a class="link" href="#entrate" style="text-decoration:none;display:inline-flex;align-items:center">Apri</a></div><div class="cmp e3"><span>Netti (12 + 13ª + 14ª)</span><strong class="num">${eur(y.totNetti)}</strong><span>Stipendio standard</span><strong class="num">${eur(y.std)}/mese</strong><span>Entrate spot</span><strong class="num">${eur(spot)}</strong><span>Riporto a Gennaio</span><strong class="num">${eur(y.riporto)}</strong><span><b>Totale disponibile</b></span><strong class="num">${eur(ent)}</strong></div>${nSim?`<p class="note" style="margin-top:8px"><span class="chip sim">STIMA ANNO PRECEDENTE</span> ${nSim} ${nSim===1?'netto è ancora una stima':'netti sono ancora stime'} dall'anno precedente: quando inserisci il netto vero tutto si ricalcola.</p>`:''}</section>`;
+  // confronto con l'anno prima
+  let apCard='';
+  if(haDati(S.anno-1)){const yp=Y(S.anno-1),eP=sum(yp.mesi,'disp'),sP=sum(yp.mesi,'spese'),fP=yp.mesi[11].avanzo;
+    const rr=(l,a,b,bad)=>{const d=r2(b-a);return `<span>${l}</span><span class="num muted">${eur(a)}</span><span class="num">${eur(b)}</span><strong class="num ${Math.abs(d)<0.005?'':((d>0)===bad?'neg':'pos')}">${d>0?'+':''}${n2(d)}</strong>`};
+    apCard=`<section class="card" aria-label="Confronto con l'anno prima"><h2>${S.anno} rispetto al ${S.anno-1}</h2><div class="cmp c4"><span class="h"></span><span class="h">${S.anno-1}</span><span class="h">${S.anno}</span><span class="h">Diff.</span>${rr('Entrate',eP,ent,false)}${rr('Spese',sP,spe,true)}${rr('Fine anno',fP,fine,false)}</div></section>`}
+  return header('Dashboard',{month:false,h:'Anno '+S.anno,badge:false})+vistaSeg('anno')+chiusuraBanner()+top+mpm+saldiChart(y)+avanzoChart(y)+catCard+entCard+apCard;
 }
 function splitBar(m){const fp=m.spese>0?Math.max(0,Math.min(1,m.fisse/m.spese)):0;return `<div class="split" aria-hidden="true"><span style="width:${(fp*100).toFixed(1)}%;background:var(--fixed)"></span><span style="flex:1;background:var(--var)"></span></div><div class="legend"><span><span class="dot" style="background:var(--fixed)"></span><strong>Fisse</strong> <span class="muted num">${eur(m.fisse)} · ${Math.round(fp*100)}%</span></span><span><span class="dot" style="background:var(--var)"></span><strong>Variabili</strong> <span class="muted num">${eur(m.variabili)} · ${Math.round((1-fp)*100)}%</span></span></div>`}
 function initials(s){return String(s).split(/[\s/+]+/).filter(Boolean).slice(0,2).map(w=>w[0]).join('').toUpperCase()}
@@ -1200,7 +1260,10 @@ document.addEventListener('click',async e=>{
     case 'kpi':S.kpi=k;render();break;
     case 'catall':S.catAll=!S.catAll;render();break;
     case 'setmese':S.mese=+k;render();break;
-    case 'dettcat':S.detCat=id;location.hash='#dettaglio';break;
+    case 'dettcat':S.detCat=id;S.detFrom=S.view==='anno'?'anno':'dashboard';location.hash='#dettaglio';break;
+    case 'vista':location.hash='#'+k;break;
+    case 'apmese':S.mese=+k;location.hash='#dashboard';break;
+    case 'annozero':S.annoZero=!S.annoZero;render();break;
     case 'dueall':S.dueAll=!S.dueAll;render();break;
     case 'regf':S.regF=k;render();break;
     case 'regcat':S.regCat=id;S.regF='tutti';if(S.view!=='registro')location.hash='#registro';else render();break;

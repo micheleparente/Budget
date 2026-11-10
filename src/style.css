@@ -263,3 +263,22 @@ html,body{overflow-x:clip}
 .plist{margin:0;padding-left:18px;display:flex;flex-direction:column;gap:3px;font-size:14px}
 .plist.muted{color:var(--sub)}
 .cb-text{margin:0}
+/* Dashboard dell'anno */
+.seg.vista{margin:0 0 2px}
+table.yt{width:100%;min-width:0;table-layout:fixed;font-size:12.5px;font-variant-numeric:tabular-nums}
+table.yt th,table.yt td{padding:9px 2px;position:static;background:none;max-width:none}
+table.yt th:first-child,table.yt td:first-child{width:46px;text-align:left;font-weight:700}
+table.yt tr.cur td{background:var(--chip)}
+table.yt tr.cur td:first-child{border-radius:8px 0 0 8px} table.yt tr.cur td:last-child{border-radius:0 8px 8px 0}
+table.yt tr.fut td{color:var(--sub);font-style:italic}
+table.yt tr.fut td.neg{color:color-mix(in srgb,var(--neg) 70%,var(--sub))} table.yt tr.fut td.pos{color:color-mix(in srgb,var(--pos) 70%,var(--sub))}
+table.yt tr.click{cursor:pointer}
+table.yt .plus{font-style:normal;color:var(--pos);font-weight:800;margin-left:2px}
+.catrow.yc .nm{display:flex;align-items:center;gap:8px;min-width:0}
+.catrow.yc .nm .dot{flex:none}
+.catrow.yc .l2{align-items:center;gap:12px;margin-top:4px}
+.catrow.yc .spark{flex:none}
+.catrow.yc .mm{display:flex;flex-direction:column;align-items:flex-end;gap:1px;text-align:right}
+.catrow.yc .mm b{font-weight:700;color:var(--ink)}
+.cmp.e3{grid-template-columns:1fr auto}
+.cmp.c4{grid-template-columns:1fr auto auto auto}
