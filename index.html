@@ -859,6 +859,10 @@ async function salvaSerie(base,list,v,serie){const by={};list.forEach(x=>{(by[x.
 function serieRighe(p){return p&&p.serie?S.D.previsioni.filter(x=>x.serie===p.serie).sort((a,b)=>a.anno-b.anno):[p]}
 function serieFine(p){const r=serieRighe(p),u=r[r.length-1];let m=0;(u.importi||[]).forEach((v,i)=>{if(v!=null)m=i+1});return {anno:u.anno,m}}
 function meseOptions(sel){return MESI.map((n,i)=>`<option value="${i+1}" ${i+1===sel?'selected':''}>${n}</option>`).join('')}
+function addebitoOptions(anno,selA,selM){const L=[[anno-1,12]].concat(MESI.map((_,i)=>[anno,i+1]),[[anno+1,1]]);
+  return L.map(([a,m])=>`<option value="${a}-${m}" ${a===selA&&m===selM?'selected':''}>${MESI[m-1]}${a!==anno?' '+a:''}</option>`).join('')}
+function leggiAddebito(v){const [a,m]=String(v).split('-').map(Number);return {anno:a,mese:m}}
+function nomeAddebito(a,m){return MESI[m-1]+(a!==S.anno?' '+a:'')}
 function stipOptions(sel){return [...Array(14).keys()].map(i=>`<option value="${i+1}" ${i+1===sel?'selected':''}>${nomeStip(i+1)}</option>`).join('')}
 function topCats(){const lim=Date.now()-120*864e5;const cnt={};S.D.movimenti.forEach(x=>{if(x.tipo==='spesa'&&x.categoria){const d=x.data?Date.parse(x.data):0;cnt[x.categoria]=(cnt[x.categoria]||0)+(d>=lim?3:1)}});
   const att=cats().filter(c=>catAttiva(c,S.anno)&&c.tipo!=='investimento'&&c.tipo!=='simulazione');
@@ -889,7 +893,7 @@ function sheetAdd(kind='uscita'){
    <div class="k-prev k-pscad"><div class="field k-scad"><button type="button" class="switch" id="a-scad" role="switch" aria-checked="false"><span class="sw-t"><strong>È una scadenza</strong><span class="small muted">Rata, bolletta, assicurazione: compare in "Prossime scadenze". La benzina o la spesa no.</span></span><span class="sw-k" aria-hidden="true"></span></button></div></div>
    <p class="note k-prev" id="a-pprev"></p>
    <div class="field k-desc"><label for="a-desc">Descrizione</label><input id="a-desc" autocomplete="off" placeholder="Es. Benzina, Cena, Reso Zalando…"></div>
-   <div class="two k-date"><div class="field"><label for="a-data">Data</label><input id="a-data" type="date" value="${isoToday()}"></div><div class="field"><label for="a-mese">Mese di addebito</label><select id="a-mese">${meseOptions(curM())}</select></div></div>
+   <div class="two k-date"><div class="field"><label for="a-data">Data</label><input id="a-data" type="date" value="${isoToday()}"></div><div class="field"><label for="a-mese">Mese di addebito</label><select id="a-mese">${addebitoOptions(S.anno,S.anno,curM())}</select></div></div>
    <div class="field k-rip"><label>Ripartizione</label><div id="a-ripbox"></div></div>
    <p class="note k-resonote">Lo storno o reso riduce la spesa della categoria: il saldo del mese risale dell'importo.</p>
    <div class="actions"><button class="pill-btn" type="submit">Salva</button></div>
@@ -923,9 +927,9 @@ function sheetAdd(kind='uscita'){
     const sel=$('#a-cat');
     el.querySelectorAll('[data-cat]').forEach(b=>b.onclick=()=>{sel.value=b.dataset.cat;el.querySelectorAll('[data-cat]').forEach(x=>x.setAttribute('aria-pressed',x===b))});
     sel.onchange=()=>el.querySelectorAll('[data-cat]').forEach(x=>x.setAttribute('aria-pressed',x.dataset.cat===sel.value));
-    const d=$('#a-data'),ms=$('#a-mese');d.onchange=()=>{if(d.value)ms.value=String(+d.value.split('-')[1])};
+    const d=$('#a-data'),ms=$('#a-mese');d.onchange=()=>{if(!d.value)return;const [y,mm]=d.value.split('-').map(Number);const k=y+'-'+mm;ms.value=[...ms.options].some(o=>o.value===k)?k:S.anno+'-'+mm};
     const imp=$('#a-imp');
-    const RE=ripEditor($('#a-ripbox'),{tot:()=>num(imp.value),start:()=>({anno:S.anno,mese:+ms.value})});
+    const RE=ripEditor($('#a-ripbox'),{tot:()=>num(imp.value),start:()=>leggiAddebito(ms.value)});
     imp.addEventListener('input',RE.refresh);ms.addEventListener('change',RE.refresh);
     $('#f-add').onsubmit=async e=>{e.preventDefault();if(!(verso==='entrata'&&sub==='stipendio'))setLastMet(met);
       const v=num(imp.value);if(!(v>0)){imp.focus();toast('Scrivi un importo maggiore di zero');return}
@@ -934,21 +938,21 @@ function sheetAdd(kind='uscita'){
       if(verso==='prevista'){const ms_=prevMesi();if(!ms_.length){toast('"Fino a" deve venire dopo "Dal mese"');return}
         const g=parseInt($('#a-pg').value,10);const cat=$('#a-cat').value;
         const anni=await salvaSerie({categoria:cat,descrizione:desc||catName(cat),tipo:ptipo,giorno:ptipo!=='budget'&&g>=1&&g<=31?g:null,scadenza:ptipo!=='budget'&&$('#a-scad').getAttribute('aria-checked')==='true',metodo:met,freq:+$('#a-pf').value},ms_,v,null);
-        const u=ms_[ms_.length-1];close();toast(`Prevista: ${desc||catName(cat)} ${eur(v)} · ${ms_.length} ${ms_.length===1?'mese':'mesi'}${anni.length>1?` fino a ${MESI[u.m-1]} ${u.anno}`:''}`);return}const mese=+ms.value;const data=d.value||null;
+        const u=ms_[ms_.length-1];close();toast(`Prevista: ${desc||catName(cat)} ${eur(v)} · ${ms_.length} ${ms_.length===1?'mese':'mesi'}${anni.length>1?` fino a ${MESI[u.m-1]} ${u.anno}`:''}`);return}const {anno:annoAdd,mese}=leggiAddebito(ms.value);const data=d.value||null;
       if(verso==='entrata'&&sub==='stipendio'){const m=+$('#a-sm').value,l=num($('#a-lordo').value);
         await put('stipendi/'+S.anno+'-'+pad(m),{anno:S.anno,mese:m,netto:r2(v),lordo:isNaN(l)?null:r2(l),stato:'confermato'});close();toast(`Inserito: stipendio ${nomeStip(m)} ${eur(v)} netto (confermato)`);return}
-      if(verso==='entrata'&&sub==='spot'){await put('movimenti/'+newId('movimenti'),{anno:S.anno,mese,data,tipo:'spot',categoria:$('#a-ecat').value||null,descrizione:desc||entName($('#a-ecat').value)||'Entrata',importo:r2(v),metodo:met});close();toast(`Inserito: +${eur(v)} entrata spot${$('#a-ecat').value?' '+entName($('#a-ecat').value):''} · ${MESI[mese-1]}`);return}
+      if(verso==='entrata'&&sub==='spot'){await put('movimenti/'+newId('movimenti'),{anno:annoAdd,mese,data,tipo:'spot',categoria:$('#a-ecat').value||null,descrizione:desc||entName($('#a-ecat').value)||'Entrata',importo:r2(v),metodo:met});close();toast(`Inserito: +${eur(v)} entrata spot${$('#a-ecat').value?' '+entName($('#a-ecat').value):''} · ${nomeAddebito(annoAdd,mese)}`);return}
       const cat=sel.value;
-      if(verso==='entrata'&&sub==='reso'){await put('movimenti/'+newId('movimenti'),{anno:S.anno,mese,data,tipo:'reso',categoria:cat,descrizione:desc||'Storno / reso',importo:r2(v),metodo:met});close();toast(`Inserito: reso +${eur(v)} su ${catName(cat)} · ${MESI[mese-1]}`);return}
+      if(verso==='entrata'&&sub==='reso'){await put('movimenti/'+newId('movimenti'),{anno:annoAdd,mese,data,tipo:'reso',categoria:cat,descrizione:desc||'Storno / reso',importo:r2(v),metodo:met});close();toast(`Inserito: reso +${eur(v)} su ${catName(cat)} · ${nomeAddebito(annoAdd,mese)}`);return}
       const R=RE.quote();if(!R.ok){toast(R.err);return}
       if(R.list.length===1){const q=R.list[0];const pr=S.D.previsioni.find(p=>p.anno===q.anno&&p.categoria===cat&&(p.tipo==='certo'||p.tipo==='variabile')&&p.importi&&p.importi[q.mese-1]!=null&&!(p.effettivi&&p.effettivi[String(q.mese)]!=null));
         if(pr){close();const ch=await choiceBox('C\'è già una previsione',`A ${MESI[q.mese-1]} è prevista "<strong>${esc(pr.descrizione)}</strong>" da ${eur(+pr.importi[q.mese-1])} (${TIPI[pr.tipo]}). Questa spesa da ${eur(v)} è la stessa?`,[['same','Sì, è la stessa: confermala con '+eur(v)],['new','No, è un\'altra spesa'],['0','Annulla']]);
           if(ch==='0')return;
           if(ch==='same'){const nd=clean(pr);nd.effettivi=Object.assign({},pr.effettivi||{});nd.effettivi[String(q.mese)]=r2(v);await put('previsioni/'+pr.id,nd);toast(`Confermata: ${pr.descrizione} ${MESI[q.mese-1]} ${eur(v)}`);return}
-          await salvaQuote({data,tipo:'spesa',categoria:cat,descrizione:desc||catName(cat),metodo:met},v,R.list,null);toast(`Inserito: ${eur(v)} ${catName(cat)} · ${met} · addebito ${MESI[q.mese-1]}`);return}}
+          await salvaQuote({data,tipo:'spesa',categoria:cat,descrizione:desc||catName(cat),metodo:met},v,R.list,null);toast(`Inserito: ${eur(v)} ${catName(cat)} · ${met} · addebito ${nomeAddebito(q.anno,q.mese)}`);return}}
       const base={data,tipo:'spesa',categoria:cat,descrizione:desc||catName(cat),metodo:met};
       await salvaQuote(base,v,R.list,null);
-      close();toast(`Inserito: ${eur(v)} ${catName(cat)} · ${met}`+(R.list.length>1?` · ${R.list.map(q=>MB[q.mese-1]+' '+n2(q.importo)).join(', ')}`:` · addebito ${MESI[R.list[0].mese-1]}`));
+      close();toast(`Inserito: ${eur(v)} ${catName(cat)} · ${met}`+(R.list.length>1?` · ${R.list.map(q=>MB[q.mese-1]+' '+n2(q.importo)).join(', ')}`:` · addebito ${nomeAddebito(R.list[0].anno,R.list[0].mese)}`));
     };
   });
 }
@@ -961,12 +965,12 @@ function sheetMov(id){
    ${s.tipo!=='spot'?`<div class="field"><label for="m-cat">Categoria</label><select id="m-cat">${catOptions(s.categoria)}</select></div>`:`<div class="field"><label for="m-ecat">Categoria entrata</label><select id="m-ecat">${ecatOptions(s.categoria)}</select></div>`}
    <div class="field"><label for="m-met">${s.tipo==='spesa'?'Metodo di pagamento':'Accreditato su'}</label><select id="m-met">${metOptions(s.metodo||'')}</select></div>
    <div class="field"><label for="m-desc">Descrizione</label><input id="m-desc" value="${esc(s.descrizione)}"></div>
-   <div class="two"><div class="field"><label for="m-data">Data</label><input id="m-data" type="date" value="${esc(s.data||'')}"></div><div class="field"><label for="m-mese">Mese di addebito</label><select id="m-mese">${meseOptions(s.mese)}</select></div></div>
+   <div class="two"><div class="field"><label for="m-data">Data</label><input id="m-data" type="date" value="${esc(s.data||'')}"></div><div class="field"><label for="m-mese">Mese di addebito</label><select id="m-mese">${addebitoOptions(s.anno,s.anno,s.mese)}</select></div></div>
    <div class="actions"><button class="pill-btn danger" type="button" id="m-del">Elimina</button><button class="pill-btn" type="submit">Salva</button></div></form>`,(el,close)=>{
     const $=q=>el.querySelector(q);
     $('#f-m').onsubmit=async e=>{e.preventDefault();const v=num($('#m-imp').value);if(!(v>0)){toast('Importo non valido');return}
-      const nd=clean(s);Object.assign(nd,{importo:r2(v),descrizione:$('#m-desc').value.trim(),data:$('#m-data').value||null,mese:+$('#m-mese').value,metodo:$('#m-met').value||null});if($('#m-cat'))nd.categoria=$('#m-cat').value;if($('#m-ecat'))nd.categoria=$('#m-ecat').value||null;
-      await put('movimenti/'+s.id,nd);close();toast(`Aggiornato: ${eur(v)}${nd.categoria?' '+(nd.tipo==='spot'?entName(nd.categoria):catName(nd.categoria)):''} · ${MESI[nd.mese-1]}`)};
+      const nd=clean(s);Object.assign(nd,{importo:r2(v),descrizione:$('#m-desc').value.trim(),data:$('#m-data').value||null,...leggiAddebito($('#m-mese').value),metodo:$('#m-met').value||null});if($('#m-cat'))nd.categoria=$('#m-cat').value;if($('#m-ecat'))nd.categoria=$('#m-ecat').value||null;
+      await put('movimenti/'+s.id,nd);close();toast(`Aggiornato: ${eur(v)}${nd.categoria?' '+(nd.tipo==='spot'?entName(nd.categoria):catName(nd.categoria)):''} · ${nomeAddebito(nd.anno,nd.mese)}`)};
     $('#m-del').onclick=async()=>{close();
       if(s.gruppo){const all=S.D.movimenti.filter(x=>x.gruppo===s.gruppo);if(!await confirmBox('Elimina uscita ripartita',`Eliminare tutte le ${all.length} quote di "${esc(s.descrizione)}"? Per togliere una sola quota, modificane l'importo.`,'Elimina tutte',true))return;for(const x of all)await del('movimenti/'+x.id);toast('Eliminate '+all.length+' quote');return}
       if(await confirmBox('Elimina movimento',`Eliminare "${esc(s.descrizione)}" da ${eur(+s.importo)}?`,'Elimina',true)){await del('movimenti/'+s.id);toast('Movimento eliminato')}};
