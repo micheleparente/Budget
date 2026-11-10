@@ -268,6 +268,7 @@ html.priv .sec-title,html.priv h1,html.priv h2{filter:none}
 .field input[type=date]::-webkit-date-and-time-value{text-align:left;margin:0}
 .field select#reg-cat,.field select#reg-met{padding-right:34px;background-position:right 12px center}
 .pct-line{display:inline-block;margin-top:2px}
+.netrow .nr-s{display:block;min-height:2.7em;line-height:1.35}
 
 </style>
 </head>
@@ -560,6 +561,11 @@ function anelloCard(y,m,mi){
   else if(st==='chiuso'){lbl='Saldo del mese';rate='Mese chiuso'}else{lbl='Saldo previsto';rate='Previsione'}
   return `<section class="card ring-card" aria-label="Il mese"><div class="ring-wrap"><svg viewBox="0 0 208 208" role="img" aria-label="Usato il ${Math.round(used*100)}% della disponibilità"><circle cx="104" cy="104" r="84" fill="none" stroke="var(--soft)" stroke-width="18"/><circle cx="104" cy="104" r="84" fill="none" stroke="${over?'var(--neg)':'var(--accent)'}" stroke-width="18" stroke-linecap="round" stroke-dasharray="${(pct*C).toFixed(1)} ${C.toFixed(1)}" transform="rotate(-90 104 104)"/></svg><div class="ring-center"><span class="lbl">${lbl}</span><span class="big num ${over?'neg':''}" style="--len:${Math.max(7,eur(Math.abs(m.saldo)).length)}">${eur(Math.abs(m.saldo))}</span></div></div><p class="rate-line">${rate}</p><p class="note" style="text-align:center">Spese <strong class="num" style="color:var(--ink)">${eur(m.spese)}</strong> su <strong class="num" style="color:var(--ink)">${eur(m.disp)}</strong> disponibili<br><span class="pct-line"><strong class="num ${used>1?'neg':''}">${Math.round(used*100)}%</strong> della disponibilità ${st==='chiuso'?'spesa':'già impegnata'}</span></p></section>`;
 }
+function proiezione(y,mi){const m=y.mesi[mi],t=today(),dim=new Date(S.anno,mi+1,0).getDate(),g=t.getDate();
+  const varIds=new Set(cats().filter(c=>c.tipo!=='fissa').map(c=>c.id));
+  const varReale=r2(S.D.movimenti.filter(x=>x.anno===S.anno&&x.mese===mi+1&&varIds.has(x.categoria)).reduce((a,x)=>a+(x.tipo==='reso'?-1:x.tipo==='spesa'?1:0)*(+x.importo),0));
+  const ritmoG=g>0?varReale/g:0,stimaVar=r2(ritmoG*dim),extra=Math.max(0,r2(stimaVar-m.variabili));
+  return {g,dim,left:dim-g+1,varReale,ritmoG,stimaVar,extra,fine:r2(m.saldo-extra)}}
 function panoramicaCard(y,m,mi){
   const st=m.stato,lastClosed=y.mesi.filter(x=>x.stato==='chiuso').pop(),fine=y.mesi[11].avanzo;
   const tiles=S.kpi==='mese'?[
@@ -573,8 +579,12 @@ function panoramicaCard(y,m,mi){
     {l:'Avanzo a oggi',v:lastClosed?sgn(lastClosed.avanzo):'—',n:lastClosed?`Gen – ${MB[lastClosed.m-1]}`:'Nessun mese chiuso',c:lastClosed&&lastClosed.avanzo<0?'neg':'pos'},
     {l:'Fine anno',v:sgn(fine),n:'Previsione',c:fine<0?'neg':'pos'}
   ];
-  const n=y.netti[S.mese],np=nettiAnno(S.D,S.anno-1)[S.mese];
-  const netRow=n?`<a class="netrow" href="#entrate" style="color:inherit;text-decoration:none"><div style="min-width:0"><div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap"><strong>Netto ${MESI[mi]}</strong><span class="chip ${n.stato==='confermato'?'ok':'sim'}">${n.stato==='confermato'?'CONFERMATO':'SIMULATO'}</span></div><span class="small muted num">${eur(n.netto)} · standard ${eur(y.std)}${np?` · a.p. ${sgn(r2(n.netto-np.netto))}`:''}</span></div><strong class="num ${n.netto-y.std<0?'neg':'pos'}" style="white-space:nowrap">${sgn(r2(n.netto-y.std))}</strong></a>`:`<a class="netrow" href="#entrate" style="color:inherit;text-decoration:none"><span class="small muted">Nessun netto per ${MESI[mi]}: tocca per registrarlo.</span></a>`;
+  let rl,rs,rv,rc,rinv=false;
+  if(st==='corrente'){const P=proiezione(y,mi);rl='Se continui così';rs=`Spese variabili ${eur(r2(P.ritmoG))} al giorno · `+(P.extra>0?`${eur(P.extra)} oltre il previsto`:'nel previsto');rv=P.fine;rc='saldo a fine mese'}
+  else{const ch=y.mesi.filter(x=>x.stato==='chiuso'&&x.m!==m.m);const med=ch.length?r2(ch.reduce((a,x)=>a+x.spese,0)/ch.length):null;
+    rl=st==='chiuso'?'Spese rispetto alla media':'Spese previste vs media';
+    if(med){const d=r2(m.spese-med);rv=d;rinv=true;rs=`Media mesi chiusi ${eur(med)} · ${Math.abs(Math.round(d/med*100))}% ${d>0?'in più':'in meno'}`}else{rv=null;rs='Nessun mese chiuso da confrontare'}rc=''}
+  const netRow=`<a class="netrow" href="#dashboard" style="color:inherit;text-decoration:none"><div style="min-width:0"><strong>${rl}</strong><span class="small muted nr-s">${rs}</span></div><strong class="num ${rv==null?'':(rinv?rv>0:rv<0)?'neg':'pos'}" style="white-space:nowrap">${rv==null?'—':sgn(rv)}</strong></a>`;
   return `<section class="card pano-card" aria-label="Panoramica"><div class="seg" role="group" aria-label="Periodo"><button data-act="kpi" data-k="mese" aria-pressed="${S.kpi==='mese'}">${MESI[mi]}</button><button data-act="kpi" data-k="anno" aria-pressed="${S.kpi==='anno'}">Anno ${S.anno}</button></div><div class="tiles">${tiles.map(t=>`<div class="tile ${t.hero?'hero':''}"><span class="t-l">${t.l}</span>${t.sim?'<span class="chip t-sim">SIMULATE</span>':''}<span class="t-v num ${t.c||''}">${t.v}</span><span class="t-n">${t.n}</span></div>`).join('')}</div>${netRow}</section>`;
 }
 function vHome(){
