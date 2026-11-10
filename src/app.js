@@ -69,14 +69,16 @@ function clean(o){const d=Object.assign({},o);delete d.id;return d}
 let raf=0;function schedule(){if(!raf)raf=requestAnimationFrame(()=>{raf=0;render()})}
 const VIEWS=['collega','home','dashboard','dettaglio','registro','entrate','altro','prospetto','previsioni','categorie','simula','dati'];
 function tabOf(v){return v==='dettaglio'?'dashboard':['home','dashboard','registro'].includes(v)?v:'altro'}
+function viewFn(){return {collega:vCollega,home:vHome,dashboard:vDashboard,dettaglio:vDettaglio,registro:vRegistro,entrate:vEntrate,altro:vAltro,dati:vDati,prospetto:vProspetto,previsioni:vPrevisioni,categorie:vCategorie,simula:vSimula}[S.view]||vHome}
+// pagina di un altro mese, senza toccare lo stato (per lo swipe)
+function htmlMese(m){const o=S.mese;S.mese=m;try{return viewFn()()}finally{S.mese=o}}
 function render(){
   const v=document.getElementById('view');
   document.querySelectorAll('.tabs a').forEach(a=>a.setAttribute('aria-current',a.dataset.v===tabOf(S.view)?'page':'false'));
   if(!S.ready){v.innerHTML=stateScreen();return}
   if(!SYNC.api&&S.view!=='collega'){S.view='collega'}
   v.classList.toggle('fit',S.view==='home'&&!!cats().length);
-  const f={collega:vCollega,home:vHome,dashboard:vDashboard,dettaglio:vDettaglio,registro:vRegistro,entrate:vEntrate,altro:vAltro,dati:vDati,prospetto:vProspetto,previsioni:vPrevisioni,categorie:vCategorie,simula:vSimula}[S.view]||vHome;
-  v.innerHTML=f();
+  v.innerHTML=viewFn()();
   if(SYNC.api&&!S.chAsk&&chiusurePendenti().length){S.chAsk=true;let done=false;try{done=sessionStorage.getItem('budget-chask')==='1';sessionStorage.setItem('budget-chask','1')}catch(e){}if(!done)setTimeout(()=>{if(!document.querySelector('.sheet'))sheetChiusura()},900)}
 }
 function stateScreen(){
@@ -908,26 +910,33 @@ function sheetGruppo(g){
   });
 }
 
-// ---------- swipe tra i mesi (segue il dito) ----------
+// ---------- swipe tra i mesi: come scorrere delle foto ----------
 (function(){
-  const v=document.getElementById('view');let t=null;
+  const v=document.getElementById('view');let t=null,gh=null;const GAP=24;
   const calm=window.matchMedia&&matchMedia('(prefers-reduced-motion: reduce)').matches;
   const ok=()=>['home','dashboard','registro','simula','dettaglio'].includes(S.view)&&!sheetClose&&S.ready;
-  const reset=()=>{v.style.transition='';v.style.transform='';v.style.opacity=''};
+  const clear=()=>{v.style.transition='';v.style.transform='';if(gh){gh.remove();gh=null}};
+  // pagina accanto (mese prima a sinistra, mese dopo a destra)
+  const ghost=d=>{if(gh&&gh._d===d)return gh;if(gh)gh.remove();const r=v.getBoundingClientRect();
+    gh=document.createElement('div');gh._d=d;gh.className=v.className+' pg-ghost';gh.setAttribute('aria-hidden','true');gh.innerHTML=htmlMese(S.mese+d);
+    Object.assign(gh.style,{position:'absolute',top:(r.top+window.scrollY)+'px',left:(r.left+window.scrollX)+'px',width:r.width+'px',margin:'0',pointerEvents:'none'});
+    document.body.appendChild(gh);return gh};
+  const place=(dx,anim)=>{const w=v.offsetWidth+GAP;const tr=anim?'transform .32s cubic-bezier(.2,.8,.2,1)':'none';v.style.transition=tr;v.style.transform=`translateX(${dx}px)`;
+    if(gh){gh.style.transition=tr;gh.style.transform=`translateX(${dx+gh._d*w}px)`}};
   v.addEventListener('touchstart',e=>{t=null;if(e.touches.length!==1||!ok())return;if(e.target.closest('.chips,.table-box,input,select,textarea'))return;
     t={x:e.touches[0].clientX,y:e.touches[0].clientY,t:Date.now(),lock:null,dx:0}},{passive:true});
   v.addEventListener('touchmove',e=>{if(!t)return;const dx=e.touches[0].clientX-t.x,dy=e.touches[0].clientY-t.y;
     if(t.lock===null){if(Math.abs(dx)<8&&Math.abs(dy)<8)return;t.lock=Math.abs(dx)>Math.abs(dy)*1.1?'x':'y'}
     if(t.lock!=='x')return;e.preventDefault();
-    const edge=(S.mese===1&&dx>0)||(S.mese===12&&dx<0);t.edge=edge;t.dx=edge?dx*0.25:dx;
-    v.style.transition='none';v.style.transform=`translateX(${t.dx}px)`;v.style.opacity=String(1-Math.min(.35,Math.abs(t.dx)/v.clientWidth*.6))},{passive:false});
+    const d=dx<0?1:-1;const edge=(S.mese===1&&d<0)||(S.mese===12&&d>0);t.edge=edge;t.dx=edge?dx*0.25:dx;
+    if(edge){if(gh){gh.remove();gh=null}}else if(!calm)ghost(d);
+    place(t.dx,false)},{passive:false});
   const end=()=>{if(!t)return;const s=t;t=null;if(s.lock!=='x')return;
-    const w=v.clientWidth,vel=Math.abs(s.dx)/Math.max(1,Date.now()-s.t),go=!s.edge&&(Math.abs(s.dx)>w*0.18||vel>0.45&&Math.abs(s.dx)>30);
-    if(!go){if(calm){reset();return}v.style.transition='transform .28s cubic-bezier(.2,.8,.2,1),opacity .28s';v.style.transform='translateX(0)';v.style.opacity='1';setTimeout(reset,300);return}
+    const w=v.offsetWidth,vel=Math.abs(s.dx)/Math.max(1,Date.now()-s.t),go=!s.edge&&(Math.abs(s.dx)>w*0.18||vel>0.45&&Math.abs(s.dx)>30);
+    if(!go){if(calm){clear();return}place(0,true);setTimeout(clear,330);return}
     const d=s.dx<0?1:-1;
-    if(calm){S.mese+=d;render();reset();return}
-    v.style.transition='transform .16s ease-in,opacity .16s';v.style.transform=`translateX(${-d*w*0.6}px)`;v.style.opacity='0';
-    setTimeout(()=>{S.mese+=d;render();v.style.transition='none';v.style.transform=`translateX(${d*w*0.35}px)`;v.style.opacity='0';
-      requestAnimationFrame(()=>requestAnimationFrame(()=>{v.style.transition='transform .26s cubic-bezier(.2,.8,.2,1),opacity .22s';v.style.transform='translateX(0)';v.style.opacity='1';setTimeout(reset,300)}))},160)};
-  v.addEventListener('touchend',end,{passive:true});v.addEventListener('touchcancel',()=>{t=null;reset()},{passive:true});
+    if(calm){S.mese+=d;render();clear();return}
+    ghost(d);place(-d*(w+GAP),true);
+    setTimeout(()=>{S.mese+=d;render();clear()},330)};
+  v.addEventListener('touchend',end,{passive:true});v.addEventListener('touchcancel',()=>{t=null;clear()},{passive:true});
 })();
