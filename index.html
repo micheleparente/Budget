@@ -260,6 +260,8 @@ html.priv .sec-title,html.priv h1,html.priv h2{filter:none}
 .choice{display:flex;flex-direction:column;gap:10px;margin-top:6px}
 .choice .pill-btn{justify-content:center;min-height:52px;text-align:center}
 .amt.neg{color:var(--neg)}
+.seg.fit{display:flex;gap:2px;padding:3px}
+.seg.fit button{flex:1 1 auto;padding:0 6px;height:36px;font-size:clamp(11.5px,3.4vw,13.5px);white-space:nowrap;letter-spacing:-.1px}
 
 </style>
 </head>
@@ -685,8 +687,8 @@ function vRegistro(){
   const ent=r2(all.filter(r=>r.entrata).reduce((a,r)=>a+r.importo,0));const entSim=all.some(r=>r.k==='stip'&&r.stato!=='effettivo');
   const pre=r2(all.filter(r=>r.stato!=='effettivo'&&r.k!=='stip').reduce((a,r)=>a+r.importo,0));
   const nDc=all.filter(r=>r.stato==='daconfermare').length;
-  const fl=[['tutti','Tutti'],['uscite','Uscite'],['entrate','Entrate'],['previsti','Previsti'],['daconf','Da confermare'+(nDc?` (${nDc})`:'')]];
-  const chips=`<div class="chips" role="group" aria-label="Filtro">${fl.map(([k,l])=>`<button data-act="regf" data-k="${k}" aria-pressed="${F===k}">${l}</button>`).join('')}</div><div class="two"><div class="field"><label for="reg-cat" class="sr">Categoria</label><select id="reg-cat" data-change="regcat"><option value="tutte">Tutte le categorie</option>${catsAnno().map(c=>`<option value="${esc(c.id)}" ${S.regCat===c.id?'selected':''}>${esc(c.nome)}</option>`).join('')}</select></div><div class="field"><label for="reg-met" class="sr">Metodo di pagamento</label><select id="reg-met" data-change="regmet"><option value="tutti">Tutti i metodi</option>${metodi().map(m=>`<option value="${esc(m)}" ${S.regMet===m?'selected':''}>${esc(m)}</option>`).join('')}</select></div></div>`;
+  const fl=[['tutti','Tutti'],['uscite','Uscite'],['entrate','Entrate'],['previsti','Previsti'],['daconf','Da confermare']];
+  const chips=`<div class="seg fit" role="group" aria-label="Filtro">${fl.map(([k,l])=>`<button data-act="regf" data-k="${k}" aria-pressed="${F===k}">${l}</button>`).join('')}</div><div class="two"><div class="field"><label for="reg-cat" class="sr">Categoria</label><select id="reg-cat" data-change="regcat"><option value="tutte">Tutte le categorie</option>${catsAnno().map(c=>`<option value="${esc(c.id)}" ${S.regCat===c.id?'selected':''}>${esc(c.nome)}</option>`).join('')}</select></div><div class="field"><label for="reg-met" class="sr">Metodo di pagamento</label><select id="reg-met" data-change="regmet"><option value="tutti">Tutti i metodi</option>${metodi().map(m=>`<option value="${esc(m)}" ${S.regMet===m?'selected':''}>${esc(m)}</option>`).join('')}</select></div></div>`;
   const bud=S.D.previsioni.filter(p=>p.anno===S.anno&&p.tipo==='budget'&&p.importi&&p.importi[S.mese-1]!=null&&(S.regCat==='tutte'||p.categoria===S.regCat));
   const yc=Y();
   const budRows=bud.map(p=>{const c=yc.cat.find(x=>x.id===p.categoria);const usato=c?c.reale[S.mese-1]:0;const b=+p.importi[S.mese-1];const pc=Math.min(100,b?usato/b*100:0);return `<button class="item" data-act="editprev" data-id="${esc(p.id)}"><span class="grow"><span class="t">${esc(p.descrizione)} · budget</span><span class="s num">Usati ${eur(usato)} su ${eur(b)}</span><span class="bar" style="margin-top:4px"><i style="width:${pc.toFixed(1)}%;background:${usato>b?'var(--neg)':'var(--accent)'}"></i></span></span>${usato>b?`<span class="amt neg">−${eur(r2(usato-b))}<span class="s" style="display:block;font-weight:500">oltre il budget</span></span>`:`<span class="amt">${eur(r2(b-usato))}<span class="s" style="display:block;font-weight:500">restano</span></span>`}</button>`}).join('');
