@@ -154,8 +154,7 @@ function panoramicaCard(y,m,mi){
     {l:'Fine anno',v:sgn(fine),n:'Previsione',c:fine<0?'neg':'pos'}
   ];
   let rl,rs,rv,rc,rinv=false,extraRows='';
-  if(st==='corrente'){extraRows=ritmoVarRow(y,mi)+prossimi7Row()}
-  else{const ch=y.mesi.filter(x=>x.stato==='chiuso'&&x.m!==m.m);const med=ch.length?r2(ch.reduce((a,x)=>a+x.spese,0)/ch.length):null;
+  {const ch=y.mesi.filter(x=>x.stato==='chiuso'&&x.m!==m.m);const med=ch.length?r2(ch.reduce((a,x)=>a+x.spese,0)/ch.length):null;
     rl=st==='chiuso'?'Spese rispetto alla media':'Spese previste vs media';
     if(med){const d=r2(m.spese-med);rv=d;rinv=true;rs=`Media mesi chiusi ${eur(med)} · ${Math.abs(Math.round(d/med*100))}% ${d>0?'in più':'in meno'}`}else{rv=null;rs='Nessun mese chiuso da confrontare'}rc=''}
   const netRow=extraRows||`<a class="netrow" href="#dashboard" style="color:inherit;text-decoration:none"><div style="min-width:0"><strong>${rl}</strong><span class="small muted nr-s">${rs}</span></div><strong class="num ${rv==null?'':(rinv?rv>0:rv<0)?'neg':'pos'}" style="white-space:nowrap">${rv==null?'—':sgn(rv)}</strong></a>`;
