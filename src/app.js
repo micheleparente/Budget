@@ -461,15 +461,20 @@ function simData(){
 }
 function vSimula(){
   if(!cats().length)return header('Simulatore')+onboarding();
-  const a=Y(),b=Y(S.anno,simData());const mi=S.mese-1;
-  const has=S.sim.extra.length||Object.keys(S.sim.netti).length,dopo=S.sim.extra.some(e=>(e.anno||S.anno)>S.anno);
+  const SD=simData(),A=S.anno,yA=Y(A),yAs=Y(A,SD);
+  const has=S.sim.extra.length||Object.keys(S.sim.netti).length,dopo=S.sim.extra.some(e=>(e.anno||A)>A);
+  const yB=dopo?Y(A+1):null,yBs=dopo?Y(A+1,SD):null;
   const gruppi=[];S.sim.extra.forEach((e,i)=>{const k=e.g||('i'+i);let G=gruppi.find(x=>x.k===k);if(!G)gruppi.push(G={k,e,parti:[]});G.parti.push(e)});
-  const cmp=(l,x,y)=>`<span>${l}</span><span class="num muted">${sgn(x)}</span><span class="num ${y<0?'neg':'pos'}"><strong>${sgn(y)}</strong></span>`;
-  const changed=a.mesi.map((m,i)=>({m:i+1,a:m.saldo,b:b.mesi[i].saldo,l:MB[i]})).filter(x=>Math.abs(x.a-x.b)>0.004);
-  if(S.sim.extra.some(e=>(e.anno||S.anno)>S.anno)){const a2=Y(S.anno+1),b2=Y(S.anno+1,simData()),yy=String(S.anno+1).slice(2);a2.mesi.forEach((m,i)=>{if(Math.abs(m.saldo-b2.mesi[i].saldo)>0.004)changed.push({m:i+1,a:m.saldo,b:b2.mesi[i].saldo,l:MB[i]+' '+yy})})}
-  return header('Simulatore')+
-  `<section class="card"><h2>Effetto</h2><div class="cmp"><span class="h"></span><span class="h">Oggi</span><span class="h">Simulato</span>${cmp('Saldo '+MESI[mi],a.mesi[mi].saldo,b.mesi[mi].saldo)}${cmp('Avanzo a '+MB[mi],a.mesi[mi].avanzo,b.mesi[mi].avanzo)}${cmp('Fine anno '+S.anno,a.mesi[11].avanzo,b.mesi[11].avanzo)}${dopo?cmp('Fine anno '+(S.anno+1),Y(S.anno+1).mesi[11].avanzo,Y(S.anno+1,simData()).mesi[11].avanzo):''}${cmp('Stipendio standard',a.std,b.std)}</div>${changed.length?`<p class="note">Mesi toccati: ${changed.map(x=>x.l+' '+sgn(r2(x.b-x.a))).join(' · ')}</p>`:'<p class="note">Aggiungi una spesa o un netto ipotetico: i dati reali non cambiano finché non confermi.</p>'}</section>`+
-  `<section class="card tight"><div class="row-head" style="padding-top:12px"><h2>Ipotesi</h2></div><div class="list">${gruppi.map(G=>`<div class="item"><span class="grow"><span class="t">${esc(G.e.descrizione)}</span><span class="s">${esc(catName(G.e.categoria))} · ${G.parti.map(x=>mesiLabel(x.importi)+' '+(x.anno||S.anno)).join(', ')}</span></span><span class="amt">${eur(r2(G.parti.reduce((t,x)=>t+x.importi.reduce((y,v)=>y+(+v||0),0),0)))}</span><button class="ghost" data-act="simdel" data-k="${esc(G.k)}" aria-label="Togli ipotesi">${ICON.close}</button></div>`).join('')}${Object.entries(S.sim.netti).map(([m,v])=>`<div class="item"><span class="grow"><span class="t">Netto ${nomeStip(+m)}</span><span class="s">Ipotetico</span></span><span class="amt">${eur(+v)}</span><button class="ghost" data-act="simdeln" data-k="${m}" aria-label="Togli netto ipotetico">${ICON.close}</button></div>`).join('')}${has?'':'<p class="empty">Nessuna ipotesi.</p>'}</div></section>`+
+  // mesi toccati: quelli delle ipotesi (spesa) + quelli in cui cambia il saldo
+  const righe=[];const add=(anno,i,o,n)=>{const sp=r2(S.sim.extra.filter(e=>(e.anno||A)===anno).reduce((t,e)=>t+(+e.importi[i]||0),0));if(Math.abs(o.saldo-n.saldo)>0.004||sp)righe.push({l:MESI[i]+(anno!==A?' '+anno:''),o:o.saldo,n:n.saldo,sp})};
+  yA.mesi.forEach((m,i)=>add(A,i,m,yAs.mesi[i]));if(dopo)yB.mesi.forEach((m,i)=>add(A+1,i,m,yBs.mesi[i]));
+  const riga=(l,o,n,nota)=>`<span>${l}${nota?`<span class="small muted" style="display:block">${nota}</span>`:''}</span><span class="num muted">${sgn(o)}</span><span class="num ${n<0?'neg':'pos'}"><strong>${sgn(n)}</strong></span>`;
+  const effetto=has?`<section class="card"><h2>Quanto ti resta</h2><div class="cmp"><span class="h">Mese</span><span class="h">Oggi</span><span class="h">Con l'ipotesi</span>${righe.map(r=>{const d=r2(r.n-r.o);const nota=r.sp&&Math.abs(d+r.sp)>0.004?`spesa ${eur(r.sp)}, il resto è riporto o stipendio`:(r.sp?`spesa ${eur(r.sp)}`:'riporto o stipendio');return riga(r.l,r.o,r.n,nota)}).join('')}</div>
+     <div class="cmp" style="margin-top:14px;padding-top:12px;border-top:1px solid var(--line)">${riga('Fine anno '+A,yA.mesi[11].avanzo,yAs.mesi[11].avanzo)}${dopo?riga('Fine anno '+(A+1),yB.mesi[11].avanzo,yBs.mesi[11].avanzo):''}${Object.keys(S.sim.netti).length?riga('Stipendio standard',yA.std,yAs.std):''}</div>
+     <p class="note">"Ti resta" = disponibilità del mese meno le spese del mese, come l'anello in Home. I dati veri non cambiano finché non confermi.</p></section>`
+   :`<section class="card"><h2>Quanto ti resta</h2><p class="note">Aggiungi una spesa ipotetica: vedi mese per mese quanto ti resta oggi e quanto ti resterebbe con la spesa. I dati veri non cambiano finché non confermi.</p></section>`;
+  return header('Simulatore',{month:false,h:'Simulatore'})+effetto+
+  `<section class="card tight"><div class="row-head" style="padding-top:12px"><h2>Ipotesi</h2></div><div class="list">${gruppi.map(G=>`<div class="item" data-act="simedit" data-k="${esc(G.k)}" role="button" tabindex="0" style="cursor:pointer"><span class="grow"><span class="t">${esc(G.e.descrizione)}</span><span class="s">${esc(catName(G.e.categoria))} · ${G.parti.map(x=>mesiLabel(x.importi)+' '+(x.anno||A)).join(', ')} · tocca per modificare</span></span><span class="amt">${eur(r2(G.parti.reduce((t,x)=>t+x.importi.reduce((y,v)=>y+(+v||0),0),0)))}</span><button class="ghost" data-act="simdel" data-k="${esc(G.k)}" aria-label="Togli ipotesi">${ICON.close}</button></div>`).join('')}${Object.entries(S.sim.netti).map(([m,v])=>`<div class="item"><span class="grow"><span class="t">Netto ${nomeStip(+m)}</span><span class="s">Ipotetico</span></span><span class="amt">${eur(+v)}</span><button class="ghost" data-act="simdeln" data-k="${m}" aria-label="Togli netto ipotetico">${ICON.close}</button></div>`).join('')}${has?'':'<p class="empty">Nessuna ipotesi.</p>'}</div></section>`+
   `<div class="actions"><button class="pill-btn soft" data-act="simspesa">+ Spesa ipotetica</button><button class="pill-btn soft" data-act="simnetto">+ Netto ipotetico</button></div>`+
   (has?`<div class="actions"><button class="pill-btn danger" data-act="simreset">Annulla tutto</button><button class="pill-btn" data-act="simok">Conferma e salva</button></div>`:'');
 }
@@ -727,12 +732,42 @@ function sheetCat(id){
   });
 }
 async function moveCat(id,dir){const cf=JSON.parse(JSON.stringify(cfg()));const arr=cf.categorie.sort((a,b)=>a.ordine-b.ordine);const i=arr.findIndex(c=>c.id===id);const j=i+dir;if(j<0||j>=arr.length)return;[arr[i],arr[j]]=[arr[j],arr[i]];arr.forEach((c,k)=>c.ordine=k);cf.categorie=arr;await saveConfig(cf)}
-function sheetSimSpesa(){
-  openSheet('Spesa ipotetica',`<form id="f-ss" novalidate style="display:flex;flex-direction:column;gap:14px"><div class="field"><label for="ss-imp">Importo (€)</label><input id="ss-imp" class="big num" inputmode="decimal" placeholder="0,00" data-autofocus></div><div class="field"><label for="ss-desc">Descrizione</label><input id="ss-desc" placeholder="Es. Nuovo telefono"></div><div class="field"><label for="ss-cat">Categoria</label><select id="ss-cat">${catOptions((topCats()[0]||{}).id)}</select></div><div class="two"><div class="field"><label for="ss-m">Dal mese</label><select id="ss-m">${meseOptions(S.mese)}</select></div><div class="field"><label for="ss-n">Per mesi</label><select id="ss-n">${Array.from({length:24},(_,i)=>`<option value="${i+1}">${i+1}</option>`).join('')}</select></div></div><div class="field"><label for="ss-mod">Come</label><select id="ss-mod"><option value="rip">Ripartisci l'importo sui mesi</option><option value="rep">Ripeti l'importo ogni mese</option></select></div><div class="actions"><button class="pill-btn" type="submit">Aggiungi alla simulazione</button></div></form>`,(el,close)=>{
-    el.querySelector('#f-ss').onsubmit=e=>{e.preventDefault();const v=num(el.querySelector('#ss-imp').value);if(!(v>0)){toast('Scrivi un importo');return}const from=+el.querySelector('#ss-m').value-1,n=+el.querySelector('#ss-n').value,rep=el.querySelector('#ss-mod').value==='rep';const q=rep?v:r2(v/n);
-      const cat=el.querySelector('#ss-cat').value,desc=el.querySelector('#ss-desc').value.trim()||catName(cat),g='g'+Date.now();const per={};
-      for(let i=0;i<n;i++){const k=from+i,a=S.anno+Math.floor(k/12),mm=k%12;(per[a]=per[a]||Array(12).fill(null))[mm]=rep?r2(v):(i===n-1?r2(v-q*(n-1)):q)}
-      Object.keys(per).forEach(a=>S.sim.extra.push({g,anno:+a,categoria:cat,descrizione:desc,importi:per[a]}));close();render()};
+function sheetSimSpesa(gk){
+  const A=S.anno,parti=gk?S.sim.extra.filter((e,i)=>(e.g||('i'+i))===gk):[];
+  // ricostruisce le impostazioni (anche per ipotesi vecchie senza meta)
+  let M=parti[0]&&parti[0].meta;
+  if(parti.length&&!M){const q=[];let from=null;parti.forEach(p=>p.importi.forEach((v,i)=>{if(v!=null){const k=((p.anno||A)-A)*12+i;if(from==null||k<from)from=k}}));parti.forEach(p=>p.importi.forEach((v,i)=>{if(v!=null)q[((p.anno||A)-A)*12+i-from]=+v}));M={from,n:q.length,mod:'pers',q:q.map(v=>v||0),imp:r2(q.reduce((t,v)=>t+(v||0),0))}}
+  const e0=parti[0]||{};const from0=M?M.from:S.mese-1,n0=M?M.n:1,mod0=M?M.mod:'rip';
+  const mOpt=Array.from({length:24},(_,k)=>`<option value="${k}" ${k===from0?'selected':''}>${MB[k%12]} ${A+Math.floor(k/12)}</option>`).join('');
+  const nOpt=Array.from({length:24},(_,i)=>`<option value="${i+1}" ${i+1===n0?'selected':''}>${i+1}</option>`).join('');
+  openSheet(gk?'Modifica spesa ipotetica':'Spesa ipotetica',`<form id="f-ss" novalidate style="display:flex;flex-direction:column;gap:14px">
+   <div class="field"><label for="ss-imp" id="ss-imp-l">Importo totale (€)</label><input id="ss-imp" class="big num" inputmode="decimal" placeholder="0,00" value="${M?String(mod0==='rep'?M.q[0]:M.imp).replace('.',','):''}" ${gk?'':'data-autofocus'}></div>
+   <div class="field"><label for="ss-desc">Descrizione</label><input id="ss-desc" placeholder="Es. Nuovo telefono" value="${esc(e0.descrizione||'')}"></div>
+   <div class="field"><label for="ss-cat">Categoria</label><select id="ss-cat">${catOptions(e0.categoria||(topCats()[0]||{}).id)}</select></div>
+   <div class="two"><div class="field"><label for="ss-m">Dal mese</label><select id="ss-m">${mOpt}</select></div><div class="field"><label for="ss-n">Per mesi</label><select id="ss-n">${nOpt}</select></div></div>
+   <div class="field"><label for="ss-mod">Come</label><select id="ss-mod"><option value="rip" ${mod0==='rip'?'selected':''}>Ripartisci in parti uguali</option><option value="rep" ${mod0==='rep'?'selected':''}>Stesso importo ogni mese</option><option value="pers" ${mod0==='pers'?'selected':''}>Personalizza mese per mese</option></select></div>
+   <div id="ss-q"></div>
+   <div class="actions"><button class="pill-btn" type="submit">${gk?'Salva modifica':'Aggiungi alla simulazione'}</button></div></form>`,(el,close)=>{
+    const $q=s=>el.querySelector(s);let cur=M&&mod0==='pers'?M.q.slice():[];
+    const lab=k=>`${MESI[k%12]} ${A+Math.floor(k/12)}`;
+    const quote=()=>{const v=num($q('#ss-imp').value),n=+$q('#ss-n').value,mod=$q('#ss-mod').value;if(mod==='pers')return cur.slice(0,n).map(x=>+x||0);if(!(v>0))return Array(n).fill(0);if(mod==='rep')return Array(n).fill(r2(v));const p=r2(v/n);return Array.from({length:n},(_,i)=>i===n-1?r2(v-p*(n-1)):p)};
+    const draw=()=>{const mod=$q('#ss-mod').value,n=+$q('#ss-n').value,from=+$q('#ss-m').value;
+      $q('#ss-imp-l').textContent=mod==='rep'?'Importo al mese (€)':'Importo totale (€)';
+      if(mod!=='pers'){$q('#ss-q').innerHTML='';$q('#ss-imp').readOnly=false;return}
+      while(cur.length<n)cur.push(0);
+      $q('#ss-q').innerHTML=`<p class="small muted" style="margin:0 0 8px">Scrivi quanto pesa in ogni mese</p><div class="grid12" style="display:grid;grid-template-columns:1fr 1fr;gap:10px">${Array.from({length:n},(_,i)=>`<div class="field"><label for="ss-q${i}">${lab(from+i)}</label><input id="ss-q${i}" class="num" inputmode="decimal" data-i="${i}" value="${cur[i]?String(cur[i]).replace('.',','):''}" placeholder="0,00"></div>`).join('')}</div>`;
+      $q('#ss-imp').readOnly=true;$q('#ss-imp').value=String(r2(cur.slice(0,n).reduce((t,x)=>t+(+x||0),0))).replace('.',',');
+      $q('#ss-q').querySelectorAll('input').forEach(inp=>inp.addEventListener('input',()=>{const x=num(inp.value);cur[+inp.dataset.i]=isNaN(x)?0:x;$q('#ss-imp').value=String(r2(cur.slice(0,n).reduce((t,y)=>t+(+y||0),0))).replace('.',',')}))};
+    $q('#ss-mod').addEventListener('change',()=>{if($q('#ss-mod').value==='pers'&&!cur.some(x=>x>0)){$q('#ss-mod').value='rip';const q=quote();$q('#ss-mod').value='pers';cur=q}draw()});
+    $q('#ss-n').addEventListener('change',draw);$q('#ss-m').addEventListener('change',draw);draw();
+    $q('#f-ss').onsubmit=ev=>{ev.preventDefault();const mod=$q('#ss-mod').value,from=+$q('#ss-m').value,n=+$q('#ss-n').value,q=quote(),tot=r2(q.reduce((t,x)=>t+x,0));
+      if(!(tot>0)){toast('Scrivi un importo');return}
+      const cat=$q('#ss-cat').value,desc=$q('#ss-desc').value.trim()||catName(cat),g=gk&&gk.startsWith('g')?gk:'g'+Date.now();const per={};
+      q.forEach((v,i)=>{if(!v)return;const k=from+i,a=A+Math.floor(k/12);(per[a]=per[a]||Array(12).fill(null))[k%12]=r2(v)});
+      const meta={from,n,mod,q,imp:mod==='rep'?r2(q[0]*n):tot};
+      const nuove=Object.keys(per).map((a,j)=>Object.assign({g,anno:+a,categoria:cat,descrizione:desc,importi:per[a]},j===0?{meta}:{}));
+      if(gk){const pos=S.sim.extra.findIndex((e,i)=>(e.g||('i'+i))===gk);S.sim.extra=S.sim.extra.filter((e,i)=>(e.g||('i'+i))!==gk);S.sim.extra.splice(Math.max(0,pos),0,...nuove)}else S.sim.extra.push(...nuove);
+      close();render()};
   });
 }
 function sheetSimNetto(){
@@ -827,6 +862,7 @@ document.addEventListener('click',async e=>{
     case 'creaanno':creaAnno(+k);break;
     case 'annullaanno':annullaAnno(+k);break;
     case 'simspesa':sheetSimSpesa();break;
+    case 'simedit':sheetSimSpesa(k);break;
     case 'simnetto':sheetSimNetto();break;
     case 'simdel':S.sim.extra=S.sim.extra.filter((e,i)=>(e.g||('i'+i))!==k);render();break;
     case 'simdeln':delete S.sim.netti[k];render();break;
@@ -1030,7 +1066,7 @@ function sheetGruppo(g){
 (function(){
   const v=document.getElementById('view');let t=null,gh=null;const GAP=24;
   const calm=window.matchMedia&&matchMedia('(prefers-reduced-motion: reduce)').matches;
-  const ok=()=>['home','dashboard','registro','simula','dettaglio'].includes(S.view)&&!sheetClose&&S.ready;
+  const ok=()=>['home','dashboard','registro','dettaglio'].includes(S.view)&&!sheetClose&&S.ready;
   const clear=()=>{v.style.transition='';v.style.transform='';if(gh){gh.remove();gh=null}};
   // pagina accanto (mese prima a sinistra, mese dopo a destra)
   const ghost=d=>{if(gh&&gh._d===d)return gh;if(gh)gh.remove();const r=v.getBoundingClientRect();
