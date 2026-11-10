@@ -271,6 +271,7 @@ html.priv .sec-title,html.priv h1,html.priv h2{filter:none}
 .netrow .nr-s{display:block;min-height:2.7em;line-height:1.35}
 html,body{touch-action:manipulation;-webkit-text-size-adjust:100%;text-size-adjust:100%}
 input,select,textarea{font-size:max(16px,1em)}
+.banner.warn{background:var(--warn-bg);color:var(--warn-ink)}
 
 </style>
 </head>
@@ -330,6 +331,9 @@ function riportoInfo(D,anno,oggi){
   if(annoHaDati(D,anno-1)){const av=computeYear(D,anno-1,oggi).mesi[11].avanzo;return {v:av>0?av:0,auto:true,av}}
   return {v:+(((D.config&&D.config.riporti)||{})[String(anno)]||0),auto:false,av:null};
 }
+function budgetChiuso(p,m){return !!(p.effettivi&&p.effettivi[String(m)]!=null)}
+// mesi chiusi (passati) con budget non ancora portati a consuntivo
+function budgetDaChiudere(D,oggi){const out={};(D.previsioni||[]).filter(p=>p.tipo==='budget').forEach(p=>{for(let m=1;m<=12;m++){const v=p.importi&&p.importi[m-1];if(v==null||budgetChiuso(p,m)||monthState(p.anno,m,oggi)!=='chiuso')continue;const k=p.anno*100+m;(out[k]=out[k]||{anno:p.anno,m,prev:[]}).prev.push(p)}});return Object.keys(out).sort().map(k=>out[k])}
 function computeYear(D,anno,oggi){
   const cats=((D.config&&D.config.categorie)||[]).slice().sort((a,b)=>a.ordine-b.ordine);
   const mov=(D.movimenti||[]).filter(x=>x.anno===anno);
@@ -350,11 +354,12 @@ function computeYear(D,anno,oggi){
       else if(x.tipo==='reso')real[x.categoria]=(real[x.categoria]||0)-(+x.importo);
     });
     ist.filter(i=>i.m===m).forEach(i=>{fixed[i.p.categoria]=(fixed[i.p.categoria]||0)+i.importo});
-    bud.forEach(p=>{const v=p.importi&&p.importi[m-1];if(v!=null)b[p.categoria]=(b[p.categoria]||0)+(+v)});
+    // budget: conta max(budget, reale) finché il mese non è chiuso a consuntivo (Eff del mese valorizzato); poi solo reale
+    bud.forEach(p=>{const v=p.importi&&p.importi[m-1];if(v!=null&&!budgetChiuso(p,m))b[p.categoria]=(b[p.categoria]||0)+(+v)});
     new Set([...Object.keys(real),...Object.keys(fixed),...Object.keys(b)]).forEach(id=>{
       const c=mk(id,cats.find(x=>x.id===id));const rl=real[id]||0,f=fixed[id]||0,bb=b[id]||0;
       c.reale[m-1]=r2(rl);
-      c.mesi[m-1]=r2(f+(bb>0&&!closed?Math.max(bb,rl):rl));
+      c.mesi[m-1]=r2(f+(bb>0?Math.max(bb,rl):rl));
     });
   }
   const mesi=[];let cum=0;
@@ -545,6 +550,7 @@ function render(){
   v.classList.toggle('fit',S.view==='home'&&!!cats().length);
   const f={collega:vCollega,home:vHome,dashboard:vDashboard,dettaglio:vDettaglio,registro:vRegistro,entrate:vEntrate,altro:vAltro,dati:vDati,prospetto:vProspetto,previsioni:vPrevisioni,categorie:vCategorie,simula:vSimula}[S.view]||vHome;
   v.innerHTML=f();
+  if(SYNC.api&&!S.chAsk&&chiusurePendenti().length){S.chAsk=true;let done=false;try{done=sessionStorage.getItem('budget-chask')==='1';sessionStorage.setItem('budget-chask','1')}catch(e){}if(!done)setTimeout(()=>{if(!document.querySelector('.sheet'))sheetChiusura()},900)}
 }
 function stateScreen(){
   if(S.err==='nodb')return '<div class="card"><h2>Dati non raggiungibili</h2><p class="note">Apri l\'app dal link claude.ai con il tuo account: i dati sono salvati lì.</p></div>';
@@ -627,7 +633,7 @@ function vDashboard(){
   if(!cats().length)return header('Dashboard')+onboarding();
   const y=Y(),mi=S.mese-1,m=y.mesi[mi];
   const nDc=y.ist.filter(i=>i.stato==='daconfermare').length;
-  const banner=nDc?`<button class="banner" data-act="godaconf"><span><strong>${nDc} ${nDc===1?'voce':'voci'} da confermare</strong> · importo vero ancora da inserire</span>${ICON.chev}</button>`:'';
+  const banner=chiusuraBanner()+(nDc?`<button class="banner" data-act="godaconf"><span><strong>${nDc} ${nDc===1?'voce':'voci'} da confermare</strong> · importo vero ancora da inserire</span>${ICON.chev}</button>`:'');
   // proiezione di fine mese (mese in corso)
   let proj='';
   if(m.stato==='corrente'){const t=today(),dim=new Date(S.anno,S.mese,0).getDate(),g=t.getDate(),left=dim-g+1;
@@ -744,8 +750,10 @@ function vRegistro(){
   const chips=`<div class="seg fit" role="group" aria-label="Filtro">${fl.map(([k,l])=>`<button data-act="regf" data-k="${k}" aria-pressed="${F===k}">${l}</button>`).join('')}</div><div class="two"><div class="field"><label for="reg-cat" class="sr">Categoria</label><select id="reg-cat" data-change="regcat"><option value="tutte">Tutte le categorie</option>${catsAnno().map(c=>`<option value="${esc(c.id)}" ${S.regCat===c.id?'selected':''}>${esc(c.nome)}</option>`).join('')}</select></div><div class="field"><label for="reg-met" class="sr">Metodo di pagamento</label><select id="reg-met" data-change="regmet"><option value="tutti">Tutti i metodi</option>${metodi().map(m=>`<option value="${esc(m)}" ${S.regMet===m?'selected':''}>${esc(m)}</option>`).join('')}</select></div></div><div class="field"><label for="reg-q" class="sr">Cerca per descrizione</label><input id="reg-q" type="search" enterkeyhint="search" autocomplete="off" placeholder="Cerca per descrizione" value="${esc(S.regQ||'')}" data-input="regq"></div>`;
   const bud=S.D.previsioni.filter(p=>p.anno===S.anno&&p.tipo==='budget'&&p.importi&&p.importi[S.mese-1]!=null&&(S.regCat==='tutte'||p.categoria===S.regCat));
   const yc=Y();
-  const budRows=bud.map(p=>{const c=yc.cat.find(x=>x.id===p.categoria);const usato=c?c.reale[S.mese-1]:0;const b=+p.importi[S.mese-1];const pc=Math.min(100,b?usato/b*100:0);return `<button class="item" data-act="editprev" data-id="${esc(p.id)}"><span class="grow"><span class="t">${esc(p.descrizione)} · budget</span><span class="s num">Usati ${eur(usato)} su ${eur(b)}</span><span class="bar" style="margin-top:4px"><i style="width:${pc.toFixed(1)}%;background:${usato>b?'var(--neg)':'var(--accent)'}"></i></span></span>${usato>b?`<span class="amt neg">−${eur(r2(usato-b))}<span class="s" style="display:block;font-weight:500">oltre il budget</span></span>`:`<span class="amt">${eur(r2(b-usato))}<span class="s" style="display:block;font-weight:500">restano</span></span>`}</button>`}).join('');
-  return header('Registro')+chips+`<a class="banner" href="#previsioni" style="background:var(--chip);color:var(--accent-ink);text-decoration:none"><span><strong>Spese previste e ricorrenti</strong> · affitto, rate, abbonamenti, budget</span>${ICON.chev}</a><div class="sum-line"><span><span class="sl-l">Entrate</span><strong class="num pos">${eur(ent)}</strong>${entSim?'<span class="simtag">(Simulate)</span>':''}</span><span><span class="sl-l">Uscite</span><strong class="num">${eur(usc)}</strong><span class="simtag">pagate</span></span><span><span class="sl-l">Previste</span><strong class="num">${eur(pre)}</strong><span class="simtag">da pagare</span></span></div>`+
+  const budRows=bud.map(p=>{const c=yc.cat.find(x=>x.id===p.categoria);const usato=c?c.reale[S.mese-1]:0;const b=+p.importi[S.mese-1];const pc=Math.min(100,b?usato/b*100:0);const ch=budgetChiuso(p,S.mese),daCh=!ch&&monthState(S.anno,S.mese,today())==='chiuso';
+    if(ch)return `<button class="item" data-act="editprev" data-id="${esc(p.id)}"><span class="grow"><span class="t">${esc(p.descrizione)} · consuntivo</span><span class="s num">Budget ${eur(b)} chiuso · conta il registrato</span></span><span class="amt">${eur(usato)}<span class="s" style="display:block;font-weight:500">a consuntivo</span></span></button>`;
+    return `<button class="item" data-act="${daCh?'chiusura':'editprev'}" data-id="${esc(p.id)}"><span class="grow"><span class="t">${esc(p.descrizione)} · budget${daCh?' <span class="chip">DA CHIUDERE</span>':''}</span><span class="s num">Usati ${eur(usato)} su ${eur(b)} · in conto ${eur(Math.max(b,usato))}</span><span class="bar" style="margin-top:4px"><i style="width:${pc.toFixed(1)}%;background:${usato>b?'var(--neg)':'var(--accent)'}"></i></span></span>${usato>b?`<span class="amt neg">−${eur(r2(usato-b))}<span class="s" style="display:block;font-weight:500">oltre il budget</span></span>`:`<span class="amt">${eur(r2(b-usato))}<span class="s" style="display:block;font-weight:500">restano</span></span>`}</button>`}).join('');
+  return header('Registro')+chips+chiusuraBanner()+`<a class="banner" href="#previsioni" style="background:var(--chip);color:var(--accent-ink);text-decoration:none"><span><strong>Spese previste e ricorrenti</strong> · affitto, rate, abbonamenti, budget</span>${ICON.chev}</a><div class="sum-line"><span><span class="sl-l">Entrate</span><strong class="num pos">${eur(ent)}</strong>${entSim?'<span class="simtag">(Simulate)</span>':''}</span><span><span class="sl-l">Uscite</span><strong class="num">${eur(usc)}</strong><span class="simtag">pagate</span></span><span><span class="sl-l">Previste</span><strong class="num">${eur(pre)}</strong><span class="simtag">da pagare</span></span></div>`+
    (budRows&&(F==='tutti'||F==='uscite')?`<p class="sec-title">Budget del mese</p><section class="card tight"><div class="list">${budRows}</div></section>`:'')+
    `<div id="reg-res">${regRisultati()}</div>`;
 }
@@ -1142,6 +1150,7 @@ document.addEventListener('click',async e=>{
     case 'dueall':S.dueAll=!S.dueAll;render();break;
     case 'regf':S.regF=k;render();break;
     case 'regcat':S.regCat=id;S.regF='tutti';if(S.view!=='registro')location.hash='#registro';else render();break;
+    case 'chiusura':sheetChiusura();break;
     case 'godaconf':S.regF='daconf';S.regCat='tutte';const fm=Y().ist.find(i=>i.stato==='daconfermare');if(fm)S.mese=fm.m;location.hash='#registro';break;
     case 'editmov':sheetMov(id);break;
     case 'editist':sheetIst(id,+k);break;
@@ -1211,6 +1220,24 @@ function sheetEcat(id){
 }
 async function moveEcat(id,dir){const cf=cfgCopy();const arr=cf.entrate.sort((a,b)=>a.ordine-b.ordine);const i=arr.findIndex(c=>c.id===id),j=i+dir;if(i<0||j<0||j>=arr.length)return;[arr[i],arr[j]]=[arr[j],arr[i]];arr.forEach((c,k)=>c.ordine=k);cf.entrate=arr;await saveConfig(cf)}
 function setAnno(a){S.anno=a;S.mese=a===today().getFullYear()?today().getMonth()+1:(S.mese||1);render()}
+function chiusurePendenti(){return S.ready?budgetDaChiudere(S.D,today()):[]}
+function chiusuraBanner(){const L=chiusurePendenti();if(!L.length)return '';const f=L[0];
+  return `<button class="banner warn" data-act="chiusura"><span><strong>${L.length===1?`Budget di ${MESI[f.m-1]} da chiudere`:`${L.length} mesi con budget da chiudere`}</strong> · conferma i costi per passarli a consuntivo</span>${ICON.chev}</button>`}
+async function chiudiMesi(L){const upd={};const ys={};
+  L.forEach(g=>{const yc=ys[g.anno]||(ys[g.anno]=Y(g.anno));g.prev.forEach(p0=>{const p=upd[p0.id]||(upd[p0.id]=Object.assign(clean(S.D.previsioni.find(x=>x.id===p0.id)||p0),{_id:p0.id}));p.effettivi=Object.assign({},p.effettivi||{});const c=yc.cat.find(x=>x.id===p.categoria);p.effettivi[String(g.m)]=c?r2(c.reale[g.m-1]):0})});
+  await batch(async()=>{for(const p of Object.values(upd)){const id=p._id;delete p._id;await put('previsioni/'+id,p)}})}
+const chiudiMese=g=>chiudiMesi([g]);
+function sheetChiusura(){
+  const L=chiusurePendenti();if(!L.length)return;const g=L[0],yc=Y(g.anno);
+  const righe=g.prev.map(p=>{const c=yc.cat.find(x=>x.id===p.categoria);const r=c?c.reale[g.m-1]:0,b=+p.importi[g.m-1];return `<div class="item" style="padding:10px 0"><span class="grow"><span class="t">${esc(p.descrizione)}</span><span class="s">Budget ${eur(b)} · registrate ${eur(r)}</span></span><span class="amt ${r>b?'neg':''}">${eur(r)}<span class="s" style="display:block;font-weight:500">a consuntivo</span></span></div>`}).join('');
+  const opts=[['ok','Sì, conferma '+MESI[g.m-1]],['fix','Li sistemo prima']];if(L.length>1)opts.push(['all',`Conferma tutti i ${L.length} mesi`]);opts.push(['0','Più tardi']);
+  openSheet(`Chiusura di ${MESI[g.m-1]} ${g.anno}`,`<p style="margin:0">Il mese è finito. Hai registrato tutti i costi di queste voci a budget? Confermando conta quanto hai registrato e il budget si annulla.</p><div class="list" style="margin-top:6px">${righe}</div><div class="choice">${opts.map(([k,l],i)=>`<button class="pill-btn ${i===0?'':'soft'}" data-r="${k}">${esc(l)}</button>`).join('')}</div>`,(el,close)=>{
+    el.querySelectorAll('[data-r]').forEach(b=>b.onclick=async()=>{const k=b.dataset.r;close();
+      if(k==='ok'){await chiudiMese(g);toast(`${MESI[g.m-1]} chiuso a consuntivo`);if(chiusurePendenti().length)setTimeout(sheetChiusura,450)}
+      else if(k==='all'){await chiudiMesi(L);toast(`${L.length} mesi chiusi a consuntivo`)}
+      else if(k==='fix'){S.anno=g.anno;S.mese=g.m;S.regF='tutti';S.regCat=g.prev.length===1?g.prev[0].categoria:'tutte';location.hash='#registro';render();toast('Quando hai finito, tocca "Budget da chiudere"')}});
+  },{compact:true});
+}
 function sheetAnno(){
   const yrs=anni(),cur=today().getFullYear(),nx=yrs.find(a=>a>cur&&!previsionaleCreato(a));
   openSheet('Anno',`<div class="yr-grid">${yrs.map(a=>`<button class="pill-btn ${a===S.anno?'':'soft'}" data-y="${a}">${a}${a===today().getFullYear()?' · in corso':haDati(a)?'':' · vuoto'}</button>`).join('')}</div>${nx?`<button class="link" id="yr-crea" style="align-self:center;margin-top:6px">Crea previsionale ${nx} dal ${nx-1}</button>`:''}`,(el,close)=>{
