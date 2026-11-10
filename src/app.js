@@ -38,11 +38,14 @@ const S={
   view:'home',kpi:'mese',regF:'tutti',regCat:'tutte',regMet:'tutti',regQ:'',catAll:false,dueAll:false,
   sim:{extra:[],netti:{}},
   priv:(()=>{try{return localStorage.getItem('budget-priv')==='1'}catch(e){return false}})(),
-  mode:(()=>{try{return localStorage.getItem('budget-mode')||'auto'}catch(e){return 'auto'}})()
+  mode:(()=>{try{return localStorage.getItem('budget-mode')||'auto'}catch(e){return 'auto'}})(),
+  icona:(()=>{const q=(location.search.match(/icona=(scura|chiara)/)||[])[1];if(q){try{localStorage.setItem('budget-icona',q)}catch(e){}return q}try{return localStorage.getItem('budget-icona')||'chiara'}catch(e){return 'chiara'}})()
 };
+function applyIcona(){const d=S.icona==='scura'?'-scura':'';const a=document.querySelector('link[rel=apple-touch-icon]');if(a)a.href='apple-touch-icon'+d+'.png';const m=document.querySelector('link[rel=manifest]');if(m)m.href='manifest'+d+'.webmanifest'}
+function saveIcona(){try{localStorage.setItem('budget-icona',S.icona)}catch(e){}applyIcona()}
 function applyPriv(){document.documentElement.classList.toggle('priv',!!S.priv)}
 function applyMode(){const r=document.documentElement;if(S.mode==='auto')r.removeAttribute('data-mode');else r.setAttribute('data-mode',S.mode)}
-applyMode();applyPriv();
+applyMode();applyPriv();applyIcona();
 function cfg(){return S.D.config||{categorie:[],riporti:{}}}
 const METODI_DEF=['C/C Fineco','Fineco Debit','Fineco Credit','Revolut','AMEX','BBVA'];
 function metodi(){const m=cfg().metodi;return Array.isArray(m)&&m.length?m:METODI_DEF}
@@ -77,7 +80,7 @@ function render(){
   document.querySelectorAll('.tabs a').forEach(a=>a.setAttribute('aria-current',a.dataset.v===tabOf(S.view)?'page':'false'));
   if(!S.ready){v.innerHTML=stateScreen();return}
   if(!SYNC.api&&S.view!=='collega'){S.view='collega'}
-  v.classList.toggle('fit',S.view==='home'&&!!cats().length);
+  v.classList.remove('fit');
   v.innerHTML=viewFn()();
   if(SYNC.api&&!S.chAsk&&chiusurePendenti().length){S.chAsk=true;let done=false;try{done=sessionStorage.getItem('budget-chask')==='1';sessionStorage.setItem('budget-chask','1')}catch(e){}if(!done)setTimeout(()=>{if(!document.querySelector('.sheet'))sheetChiusura()},900)}
 }
@@ -160,10 +163,43 @@ function panoramicaCard(y,m,mi){
   const netRow=extraRows||`<a class="netrow" href="#dashboard" style="color:inherit;text-decoration:none"><div style="min-width:0"><strong>${rl}</strong><span class="small muted nr-s">${rs}</span></div><strong class="num ${rv==null?'':(rinv?rv>0:rv<0)?'neg':'pos'}" style="white-space:nowrap">${rv==null?'—':sgn(rv)}</strong></a>`;
   return `<section class="card pano-card" aria-label="Panoramica"><div class="seg" role="group" aria-label="Periodo"><button data-act="kpi" data-k="mese" aria-pressed="${S.kpi==='mese'}">${MESI[mi]}</button><button data-act="kpi" data-k="anno" aria-pressed="${S.kpi==='anno'}">Anno ${S.anno}</button></div><div class="tiles">${tiles.map(t=>`<div class="tile ${t.hero?'hero':''}"><span class="t-l">${t.l}</span>${t.sim?'<span class="chip t-sim">SIMULATE</span>':''}<span class="t-v num ${t.c||''}">${t.v}</span><span class="t-n">${t.n}</span></div>`).join('')}</div>${netRow}</section>`;
 }
+function homeHd(){
+  const nDc=S.ready&&cats().length?Y().ist.filter(i=>i.stato==='daconfermare').length:0;
+  const eye=S.priv?'<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 3l18 18"/><path d="M10.6 5.1A10.7 10.7 0 0 1 12 5c6.4 0 10 7 10 7a17.6 17.6 0 0 1-3.2 4.1M6.6 6.6C3.8 8.4 2 12 2 12s3.6 7 10 7a9.9 9.9 0 0 0 5.4-1.6"/><path d="M9.9 9.9a3 3 0 0 0 4.2 4.2"/></svg>':'<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg>';
+  const modeIcon=S.mode==='dark'?ICON.moon:S.mode==='light'?ICON.sun:ICON.auto;
+  const modeLbl=S.mode==='dark'?'Tema scuro, tocca per automatico':S.mode==='light'?'Tema chiaro, tocca per scuro':'Tema automatico, tocca per chiaro';
+  return `<div class="hh"><a class="hh-av" href="#altro" aria-label="Altro e impostazioni">MP</a><div class="hh-m"><button class="ghost" data-act="mprev" aria-label="Mese precedente" ${S.mese<=1?'disabled':''}>${ICON.prev}</button><button class="ml" data-act="pickyear" aria-label="${MESI[S.mese-1]} ${S.anno}, tocca per cambiare anno">${MESI[S.mese-1]} ${S.anno}</button><button class="ghost" data-act="mnext" aria-label="Mese successivo" ${S.mese>=12?'disabled':''}>${ICON.next}</button></div><button class="icon-btn" data-act="priv" aria-pressed="${S.priv}" aria-label="${S.priv?'Mostra gli importi':'Nascondi gli importi'}">${eye}</button><button class="icon-btn" data-act="mode" aria-label="${modeLbl}">${modeIcon}</button></div>`+
+   (nDc?`<button class="dc-badge hh-badge" data-act="godaconf">${nDc} ${nDc===1?'voce':'voci'} da confermare</button>`:'');
+}
+function heroRing(y,m,mi){
+  const st=m.stato,used=m.disp>0?m.spese/m.disp:(m.spese>0?1:0),pct=Math.max(0,Math.min(1,used)),over=m.saldo<0;
+  const C=2*Math.PI*112;let lbl,rate;
+  if(st==='corrente'){const t=today();const dim=new Date(S.anno,S.mese,0).getDate();const left=dim-t.getDate()+1;lbl=over?'Sei oltre di':'Ti restano';rate=over?'Spese sopra la disponibilità':`${eur(m.saldo/left)} al giorno · ${left} ${left===1?'giorno':'giorni'}`}
+  else if(st==='chiuso'){lbl='Saldo di '+MESI[mi];rate='Mese chiuso'}else{lbl='Saldo previsto';rate='Previsione'}
+  const v=Math.abs(m.saldo),int=Math.trunc(v).toLocaleString('it-IT'),dec=NF.format(v).split(',')[1];
+  return `<section class="hh-hero" aria-label="Il mese"><div class="hero-ring"><svg viewBox="0 0 236 236" role="img" aria-label="Usato il ${Math.round(used*100)}% della disponibilità"><circle cx="118" cy="118" r="112" fill="none" stroke="var(--line)" stroke-width="4"/><circle cx="118" cy="118" r="112" fill="none" stroke="${over?'var(--neg)':'var(--ink)'}" stroke-width="4" stroke-linecap="round" stroke-dasharray="${(pct*C).toFixed(1)} ${C.toFixed(1)}" transform="rotate(-90 118 118)"/></svg><div class="hero-c"><span class="lbl">${lbl}</span><span class="big num ${over?'neg':''}" style="--len:${int.length+2}">${over?'−':''}${int}<small>,${dec} €</small></span><span class="rate">${rate}</span></div></div><p class="hero-note">Spese <strong class="num">${eur(m.spese)}</strong> su <strong class="num">${eur(m.disp)}</strong> · <strong class="num ${used>1?'neg':''}">${Math.round(used*100)}%</strong></p></section>`;
+}
+function azioniRapide(){
+  const i=p=>`<span class="qi"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${p}</svg></span>`;
+  return `<nav class="qa" aria-label="Azioni rapide"><button data-act="add" data-k="uscita">${i('<path d="M12 5v14M19 12l-7 7-7-7"/>')}Uscita</button><button data-act="add" data-k="entrata">${i('<path d="M12 19V5M5 12l7-7 7 7"/>')}Entrata</button><a href="#simula">${i('<path d="M16 3h5v5M21 3l-7 7M8 21H3v-5M3 21l7-7"/>')}Simula</a><a href="#previsioni">${i('<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>')}Previsioni</a></nav>`;
+}
+function kpiLista(y,m,mi){
+  const st=m.stato,fine=y.mesi[11].avanzo;
+  const ch=y.mesi.filter(x=>x.stato==='chiuso'&&x.m!==m.m);const med=ch.length?r2(ch.reduce((a,x)=>a+x.spese,0)/ch.length):null;
+  const d=med?r2(m.spese-med):null;
+  const row=(l,sub,v,c,href)=>`<${href?`a href="${href}"`:'div'} class="krow"><span class="kl"><span>${l}</span>${sub?`<small>${sub}</small>`:''}</span><span class="kv num ${c||''}">${v}</span></${href?'a':'div'}>`;
+  return `<section class="card klist" aria-label="Panoramica del mese">`+
+    row('Disponibilità',m.spot?'Standard + entrate spot':(S.mese===1&&y.riporto?'Standard + riporto':'Stipendio standard'),eur(m.disp))+
+    row('Spese del mese',st==='chiuso'?'Effettive':'Effettive + previste',eur(m.spese),'','#registro')+
+    row('Avanzo cumulato',`Gennaio – ${MESI[mi]}`,sgn(m.avanzo),m.avanzo<0?'neg':'pos','#anno')+
+    row('Fine anno','Previsione '+S.anno,sgn(fine),fine<0?'neg':'pos','#anno')+
+    row(st==='chiuso'?'Rispetto alla media':'Previste vs media',med?`Media mesi chiusi ${eur(med)} · ${Math.abs(Math.round(d/med*100))}% ${d>0?'in più':'in meno'}`:'Nessun mese chiuso da confrontare',d==null?'—':sgn(d),d==null?'':d>0?'neg':'pos','#dashboard')+
+   `</section>`;
+}
 function vHome(){
-  if(!cats().length)return header('Budget')+onboarding();
+  if(!cats().length)return homeHd()+onboarding();
   const y=Y(),mi=S.mese-1,m=y.mesi[mi];
-  return header('Budget',{eye:true})+syncBanner()+anelloCard(y,m,mi)+panoramicaCard(y,m,mi);
+  return homeHd()+syncBanner()+heroRing(y,m,mi)+azioniRapide()+kpiLista(y,m,mi);
 }
 
 // ---------- DASHBOARD ----------
@@ -407,7 +443,8 @@ function vAltro(){
    gruppo('Impostazioni',[
      link('categorie','Categorie e metodi','Categorie di spesa e di entrata, metodi di pagamento'),
      link('dati','Dati e sincronizzazione','Google Sheet, stato della sincronizzazione, esporta in Excel')])+
-   `<section class="card"><h2>Tema</h2><div class="seg" role="group" aria-label="Tema"><button data-act="setmode" data-k="auto" aria-pressed="${S.mode==='auto'}">Automatico</button><button data-act="setmode" data-k="light" aria-pressed="${S.mode==='light'}">Chiaro</button><button data-act="setmode" data-k="dark" aria-pressed="${S.mode==='dark'}">Scuro</button></div></section>`;
+   `<section class="card"><h2>Tema</h2><div class="seg" role="group" aria-label="Tema"><button data-act="setmode" data-k="auto" aria-pressed="${S.mode==='auto'}">Automatico</button><button data-act="setmode" data-k="light" aria-pressed="${S.mode==='light'}">Chiaro</button><button data-act="setmode" data-k="dark" aria-pressed="${S.mode==='dark'}">Scuro</button></div></section>`+
+   `<section class="card"><h2>Icona dell'app</h2><div class="seg" role="group" aria-label="Icona dell'app"><button data-act="seticona" data-k="chiara" aria-pressed="${S.icona!=='scura'}">Bianca, b nera</button><button data-act="seticona" data-k="scura" aria-pressed="${S.icona==='scura'}">Nera, b bianca</button></div><p class="note">L'iPhone prende l'icona solo quando aggiungi l'app alla Home. Per cambiarla apri in Safari <strong>micheleparente.github.io/Budget/?icona=${S.icona==='scura'?'scura':'chiara'}</strong>, poi Condividi → Aggiungi alla schermata Home.</p></section>`;
 }
 function vProspetto(){
   const y=Y();
@@ -856,6 +893,7 @@ document.addEventListener('click',async e=>{
     case 'editmet1':sheetMet(+id);break;
     case 'metmove':moveMet(+id,+k);break;
     case 'add':sheetAdd(k||'uscita');break;
+    case 'seticona':S.icona=k;saveIcona();render();break;
     case 'pickyear':sheetAnno();break;
     case 'setanno':setAnno(+k);break;
     case 'anno':S.anno=+k;S.mese=S.anno===today().getFullYear()?today().getMonth()+1:1;if(S.view!=='home')location.hash='#home';else render();break;
@@ -1061,6 +1099,16 @@ function sheetGruppo(g){
     $('#g-del').onclick=async()=>{close();if(!await confirmBox('Elimina uscita ripartita',`Eliminare "${esc(s.descrizione)}" da ${eur(tot)} con tutte le sue ${qs.length} quote?`,'Elimina',true))return;for(const x of qs)await del('movimenti/'+x.id);toast('Uscita eliminata')};
   });
 }
+
+// ---------- barra in basso: si riduce scorrendo verso il basso (come Revolut) ----------
+(function(){const nav=document.querySelector('.tabs');if(!nav)return;let last=window.scrollY,acc=0,tk=false;
+  const upd=()=>{tk=false;const y=Math.max(0,window.scrollY),d=y-last;last=y;
+    if(y<24){acc=0;nav.classList.remove('mini');return}
+    if((d>0)!==(acc>0))acc=0;acc+=d;
+    if(acc>18)nav.classList.add('mini');else if(acc<-18)nav.classList.remove('mini')};
+  window.addEventListener('scroll',()=>{if(!tk){tk=true;requestAnimationFrame(upd)}},{passive:true});
+  window.addEventListener('hashchange',()=>{nav.classList.remove('mini');last=0;acc=0});
+})();
 
 // ---------- swipe tra i mesi: come scorrere delle foto ----------
 (function(){

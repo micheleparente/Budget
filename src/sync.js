@@ -105,7 +105,7 @@ function syncLine(){
 
 // ---------- schermata di avvio ----------
 const SPL={t0:Date.now(),done:false,timer:null};
-function splashStep(pct,msg){const f=document.getElementById('splash-fill'),m=document.getElementById('splash-msg');if(f)f.style.width=pct+'%';if(m&&msg)m.textContent=msg}
+function splashStep(pct,msg){const f=document.getElementById('splash-fill'),m=document.getElementById('splash-msg'),p=document.getElementById('splash-pct');if(f)f.style.width=pct+'%';if(p)p.textContent=Math.round(pct)+'%';if(m&&msg)m.textContent=msg}
 function splashStart(){
   splashStep(15,SYNC.api?'Collego i tuoi dati…':'Avvio…');
   let p=15;SPL.timer=setInterval(()=>{p=Math.min(88,p+(88-p)*0.12);splashStep(p)},250);

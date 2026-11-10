@@ -12,28 +12,30 @@ html=f'''<!DOCTYPE html>
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="Budget">
-<meta name="theme-color" content="#F3F4F7">
+<meta name="theme-color" content="#F4F4F5" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#09090B" media="(prefers-color-scheme: dark)">
 <meta name="robots" content="noindex, nofollow">
 <title>Budget Michele</title>
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
+<script>try{{var q=(location.search.match(/icona=(scura|chiara)/)||[])[1]||localStorage.getItem('budget-icona');if(q==='scura'){{document.querySelector('link[rel=apple-touch-icon]').href='apple-touch-icon-scura.png';document.querySelector('link[rel=manifest]').href='manifest-scura.webmanifest'}}}}catch(e){{}}</script>
 <link rel="icon" href="icon-192.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Space+Grotesk:wght@600;700&display=swap" rel="stylesheet">
 <style>
 {css}
 </style>
 </head>
 <body>
-<div class="splash" id="splash" role="status" aria-live="polite" aria-label="Caricamento"><div class="halo" aria-hidden="true"></div><div class="halo h2" aria-hidden="true"></div><svg class="ring" viewBox="0 0 76 76" fill="none" aria-hidden="true"><circle cx="38" cy="38" r="24" stroke="rgba(255,255,255,.25)" stroke-width="7"/><circle class="arc" cx="38" cy="38" r="24" stroke="#fff" stroke-width="7" stroke-linecap="round" transform="rotate(-90 38 38)" pathLength="100"/><circle class="dot" cx="38" cy="38" r="5" fill="#fff"/></svg><div class="word" aria-hidden="true"><span style="animation-delay:0.35s">B</span><span style="animation-delay:0.42s">u</span><span style="animation-delay:0.49s">d</span><span style="animation-delay:0.56s">g</span><span style="animation-delay:0.63s">e</span><span style="animation-delay:0.70s">t</span></div><p class="tag">I tuoi flussi di cassa</p><div class="bottom"><div class="track" aria-hidden="true"><div class="fill" id="splash-fill"></div></div><p id="splash-msg">Avvio…</p></div></div>
+<div class="splash" id="splash" role="status" aria-live="polite" aria-label="Caricamento"><div><div class="word" aria-hidden="true"><span style="animation-delay:0.15s">b</span><span style="animation-delay:0.21s">u</span><span style="animation-delay:0.27s">d</span><span style="animation-delay:0.33s">g</span><span style="animation-delay:0.39s">e</span><span style="animation-delay:0.45s">t</span><span style="animation-delay:0.51s">.</span></div><p class="tag">Flussi di cassa · Michele</p></div><div class="bottom"><div class="row"><p id="splash-msg">Avvio…</p><span id="splash-pct" aria-hidden="true">0%</span></div><div class="track" aria-hidden="true"><div class="fill" id="splash-fill"></div></div></div></div>
 <main id="view" class="pg" aria-live="polite"></main>
 <nav class="tabs" aria-label="Sezioni"><div class="in">
-<a href="#home" data-v="home">{ic('home')}Home</a>
-<a href="#dashboard" data-v="dashboard">{ic('dash')}Dashboard</a>
+<a href="#home" data-v="home">{ic('home')}<span>Home</span></a>
+<a href="#dashboard" data-v="dashboard">{ic('dash')}<span>Dashboard</span></a>
 <button class="fab" id="fab" type="button" aria-label="Nuovo movimento: uscita, entrata o prevista">{ic('plus')}</button>
-<a href="#registro" data-v="registro">{ic('list')}Registro</a>
-<a href="#altro" data-v="altro">{ic('more')}Altro</a>
+<a href="#registro" data-v="registro">{ic('list')}<span>Registro</span></a>
+<a href="#altro" data-v="altro">{ic('more')}<span>Altro</span></a>
 </div></nav>
 <div class="backdrop" id="sheet" hidden></div>
 <div class="toast" id="toast" role="status" hidden></div>
