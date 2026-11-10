@@ -257,6 +257,9 @@ tr.click{cursor:pointer}
 html.priv .num,html.priv .amt,html.priv .t-v,html.priv .ring-center .big,html.priv td:not(:first-child),html.priv svg text,html.priv .rate-line,html.priv .sum-line strong{filter:blur(7px);user-select:none;transition:filter .2s}
 html.priv .sec-title,html.priv h1,html.priv h2{filter:none}
 .icon-btn[data-act=priv][aria-pressed=true]{color:var(--accent)}
+.choice{display:flex;flex-direction:column;gap:10px;margin-top:6px}
+.choice .pill-btn{justify-content:center;min-height:52px;text-align:center}
+.amt.neg{color:var(--neg)}
 
 </style>
 </head>
@@ -686,7 +689,7 @@ function vRegistro(){
   const chips=`<div class="chips" role="group" aria-label="Filtro">${fl.map(([k,l])=>`<button data-act="regf" data-k="${k}" aria-pressed="${F===k}">${l}</button>`).join('')}</div><div class="two"><div class="field"><label for="reg-cat" class="sr">Categoria</label><select id="reg-cat" data-change="regcat"><option value="tutte">Tutte le categorie</option>${catsAnno().map(c=>`<option value="${esc(c.id)}" ${S.regCat===c.id?'selected':''}>${esc(c.nome)}</option>`).join('')}</select></div><div class="field"><label for="reg-met" class="sr">Metodo di pagamento</label><select id="reg-met" data-change="regmet"><option value="tutti">Tutti i metodi</option>${metodi().map(m=>`<option value="${esc(m)}" ${S.regMet===m?'selected':''}>${esc(m)}</option>`).join('')}</select></div></div>`;
   const bud=S.D.previsioni.filter(p=>p.anno===S.anno&&p.tipo==='budget'&&p.importi&&p.importi[S.mese-1]!=null&&(S.regCat==='tutte'||p.categoria===S.regCat));
   const yc=Y();
-  const budRows=bud.map(p=>{const c=yc.cat.find(x=>x.id===p.categoria);const usato=c?c.reale[S.mese-1]:0;const b=+p.importi[S.mese-1];const pc=Math.min(100,b?usato/b*100:0);return `<button class="item" data-act="editprev" data-id="${esc(p.id)}"><span class="grow"><span class="t">${esc(p.descrizione)} · budget</span><span class="s num">Usati ${eur(usato)} su ${eur(b)}</span><span class="bar" style="margin-top:4px"><i style="width:${pc.toFixed(1)}%;background:${usato>b?'var(--neg)':'var(--accent)'}"></i></span></span><span class="amt">${eur(Math.max(0,r2(b-usato)))}<span class="s" style="display:block;font-weight:500">restano</span></span></button>`}).join('');
+  const budRows=bud.map(p=>{const c=yc.cat.find(x=>x.id===p.categoria);const usato=c?c.reale[S.mese-1]:0;const b=+p.importi[S.mese-1];const pc=Math.min(100,b?usato/b*100:0);return `<button class="item" data-act="editprev" data-id="${esc(p.id)}"><span class="grow"><span class="t">${esc(p.descrizione)} · budget</span><span class="s num">Usati ${eur(usato)} su ${eur(b)}</span><span class="bar" style="margin-top:4px"><i style="width:${pc.toFixed(1)}%;background:${usato>b?'var(--neg)':'var(--accent)'}"></i></span></span>${usato>b?`<span class="amt neg">−${eur(r2(usato-b))}<span class="s" style="display:block;font-weight:500">oltre il budget</span></span>`:`<span class="amt">${eur(r2(b-usato))}<span class="s" style="display:block;font-weight:500">restano</span></span>`}</button>`}).join('');
   const rowHtml=r=>{
     if(r.k==='ist')return istRow(r.i);
     if(r.k==='stip'){const sim=r.n.stato!=='confermato';return `<button class="item ${sim?'is-prev':''}" data-act="editstip" data-k="${r.mm}"><span class="badge in">€</span><span class="grow"><span class="t">Stipendio ${nomeStip(r.mm)}</span><span class="s">Entrata · ${sim?'stima anno precedente <span class="chip sim">SIMULATO</span>':'netto confermato'}</span></span><span class="amt pos">+${eur(r.importo)}</span></button>`}
@@ -805,10 +808,13 @@ function openSheet(title,html,mount,opts={}){
   if(mount)mount(bd.querySelector('.sheet'),close);
   const f=bd.querySelector('[data-autofocus]');if(f)setTimeout(()=>f.focus(),60);
 }
+function choiceBox(title,html,opts){
+  return new Promise(res=>{openSheet(title,`<p style="margin:0">${html}</p><div class="choice">${opts.map(([k,l],i)=>`<button class="pill-btn ${i===0?'':'soft'}" data-r="${k}">${esc(l)}</button>`).join('')}</div>`,(el,close)=>{el.querySelectorAll('[data-r]').forEach(b=>b.onclick=()=>{close();res(b.dataset.r)})},{compact:true})});
+}
 function confirmBox(title,text,ok='Conferma',danger=false){
   return new Promise(res=>{openSheet(title,`<p style="margin:0">${text}</p><div class="actions"><button class="pill-btn soft" data-r="0">Annulla</button><button class="pill-btn ${danger?'danger':''}" data-r="1">${esc(ok)}</button></div>`,(el,close)=>{el.querySelectorAll('[data-r]').forEach(b=>b.onclick=()=>{close();res(b.dataset.r==='1')})},{compact:true})});
 }
-let toastT=0;function toast(t){const el=document.getElementById('toast');const warn=/non riuscit|non valid|^Scrivi|^Non |^Inserisci|^Hai |^Mancano|^Crea prima|^Serve|deve venire|già in corso|^Ogni mese/i.test(t);
+let toastT=0;function toast(t){const el=document.getElementById('toast');const warn=/non riuscit|non valid|^Scrivi|^Non |^Inserisci|^Hai |^Mancano|^Crea prima|^Serve|deve venire|già in corso|^Ogni mese|^Scegli/i.test(t);
   el.className='toast'+(warn?' warn':'');el.innerHTML=`<span class="t-ic" aria-hidden="true">${warn?'!':'<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>'}</span><span class="t-tx"></span>`;el.querySelector('.t-tx').textContent=t;
   el.hidden=false;el.classList.remove('in');void el.offsetWidth;el.classList.add('in');el.onclick=()=>{el.classList.remove('in');setTimeout(()=>el.hidden=true,250)};
   clearTimeout(toastT);toastT=setTimeout(()=>{el.classList.remove('in');setTimeout(()=>el.hidden=true,250)},3200)}
@@ -894,9 +900,14 @@ function sheetAdd(kind='uscita'){
       const cat=sel.value;
       if(verso==='entrata'&&sub==='reso'){await put('movimenti/'+newId('movimenti'),{anno:S.anno,mese,data,tipo:'reso',categoria:cat,descrizione:desc||'Storno / reso',importo:r2(v),metodo:met});close();toast(`Inserito: reso +${eur(v)} su ${catName(cat)} · ${MESI[mese-1]}`);return}
       const R=RE.quote();if(!R.ok){toast(R.err);return}
+      if(R.list.length===1){const q=R.list[0];const pr=S.D.previsioni.find(p=>p.anno===q.anno&&p.categoria===cat&&(p.tipo==='certo'||p.tipo==='variabile')&&p.importi&&p.importi[q.mese-1]!=null&&!(p.effettivi&&p.effettivi[String(q.mese)]!=null));
+        if(pr){close();const ch=await choiceBox('C\'è già una previsione',`A ${MESI[q.mese-1]} è prevista "<strong>${esc(pr.descrizione)}</strong>" da ${eur(+pr.importi[q.mese-1])} (${TIPI[pr.tipo]}). Questa spesa da ${eur(v)} è la stessa?`,[['same','Sì, è la stessa: confermala con '+eur(v)],['new','No, è un\'altra spesa'],['0','Annulla']]);
+          if(ch==='0')return;
+          if(ch==='same'){const nd=clean(pr);nd.effettivi=Object.assign({},pr.effettivi||{});nd.effettivi[String(q.mese)]=r2(v);await put('previsioni/'+pr.id,nd);toast(`Confermata: ${pr.descrizione} ${MESI[q.mese-1]} ${eur(v)}`);return}
+          await salvaQuote({data,tipo:'spesa',categoria:cat,descrizione:desc||catName(cat),metodo:met},v,R.list,null);toast(`Inserito: ${eur(v)} ${catName(cat)} · ${met} · addebito ${MESI[q.mese-1]}`);return}}
       const base={data,tipo:'spesa',categoria:cat,descrizione:desc||catName(cat),metodo:met};
       await salvaQuote(base,v,R.list,null);
-      close();toast(`Inserito: ${eur(v)} ${catName(cat)} · ${met}`+(R.list.length>1?` · ${R.list.map(q=>MB[q.mese-1]+' '+n2(q.importo)).join(', ')}`:` · addebito ${MESI[R.list[0].mese-1].toLowerCase()}`));
+      close();toast(`Inserito: ${eur(v)} ${catName(cat)} · ${met}`+(R.list.length>1?` · ${R.list.map(q=>MB[q.mese-1]+' '+n2(q.importo)).join(', ')}`:` · addebito ${MESI[R.list[0].mese-1]}`));
     };
   });
 }
