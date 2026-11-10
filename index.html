@@ -709,14 +709,10 @@ function vDashboard(){
   const banner=chiusuraBanner()+(nDc?`<button class="banner" data-act="godaconf"><span><strong>${nDc} ${nDc===1?'voce':'voci'} da confermare</strong> · importo vero ancora da inserire</span>${ICON.chev}</button>`:'');
   // proiezione di fine mese (mese in corso)
   let proj='';
-  if(m.stato==='corrente'){const t=today(),dim=new Date(S.anno,S.mese,0).getDate(),g=t.getDate(),left=dim-g+1;
-    const varIds=new Set(cats().filter(c=>c.tipo!=='fissa').map(c=>c.id));
-    const varReale=r2(S.D.movimenti.filter(x=>x.anno===S.anno&&x.mese===S.mese&&varIds.has(x.categoria)).reduce((a,x)=>a+(x.tipo==='reso'?-1:x.tipo==='spesa'?1:0)*(+x.importo),0));
-    const ritmoG=g>0?varReale/g:0,stimaVar=r2(ritmoG*dim);
-    const extra=Math.max(0,r2(stimaVar-m.variabili));const fine=r2(m.saldo-extra);
+  if(m.stato==='corrente'){const t=today(),dim=new Date(S.anno,S.mese,0).getDate(),g=t.getDate(),left=dim-g+1;const fine=m.saldo;
     proj=`<section class="card" aria-label="Fine mese"><div class="row-head"><h2>Come chiudi ${MESI[mi]}</h2><span class="small muted">giorno ${g} di ${dim}</span></div>
-     <div class="tiles"><div class="tile ${fine<0?'':'hero'}" style="${fine<0?'background:var(--warn-bg);color:var(--warn-ink)':''}"><span class="t-l">Se continui così</span><span class="t-v num">${sgn(fine)}</span><span class="t-n">saldo a fine mese</span></div><div class="tile"><span class="t-l">Puoi spendere</span><span class="t-v num">${m.saldo>0?eur(r2(m.saldo/left)):'0,00 €'}</span><span class="t-n">al giorno per ${left} giorni</span></div></div>
-     <p class="note">Spese variabili finora ${eur(varReale)}, cioè ${eur(r2(ritmoG))} al giorno: a questo ritmo arrivi a circa ${eur(stimaVar)} entro fine mese${extra>0?`, ${eur(extra)} oltre il previsto`:', dentro il previsto'}.</p></section>`}
+     <div class="tiles"><div class="tile ${fine<0?'':'hero'}" style="${fine<0?'background:var(--warn-bg);color:var(--warn-ink)':''}"><span class="t-l">Saldo a fine mese</span><span class="t-v num">${sgn(fine)}</span><span class="t-n">con le spese previste</span></div><div class="tile"><span class="t-l">Puoi spendere</span><span class="t-v num">${fine>0?eur(r2(fine/left)):'0,00 €'}</span><span class="t-n">al giorno per ${left} giorni</span></div></div>
+     <p class="note">Disponibilità ${eur(m.disp)} − spese effettive e previste ${eur(m.spese)}. Le spese variabili non ancora registrate non sono stimate.</p></section>`}
   // prossime scadenze
   const ps=prossimeScadenze();const t0=today();t0.setHours(0,0,0,0);
   const fra=d=>{const n=Math.round((d-t0)/864e5);return n<0?`scaduta da ${-n} ${-n===1?'giorno':'giorni'}`:n===0?'oggi':n===1?'domani':`tra ${n} giorni`};
