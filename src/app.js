@@ -1104,13 +1104,19 @@ function sheetGruppo(g){
 }
 
 // ---------- barra in basso: si riduce scorrendo verso il basso (come Revolut) ----------
-(function(){const nav=document.querySelector('.tabs');if(!nav)return;const sc=SCR();let last=sc.scrollTop,acc=0,tk=false;
-  const upd=()=>{tk=false;const y=Math.max(0,sc.scrollTop),d=y-last;last=y;
-    if(y<24){acc=0;nav.classList.remove('mini');return}
+// Isteresi: si riduce dopo ~30px verso il basso, si riapre dopo ~50px verso l'alto o vicino all'inizio.
+// L'effetto elastico di iOS (sopra l'inizio o oltre la fine) viene ignorato, così la barra non "rimbalza".
+(function(){const nav=document.querySelector('.tabs');if(!nav)return;const sc=SCR();let last=sc.scrollTop,acc=0,tk=false,lock=0;
+  const set=on=>{if(nav.classList.contains('mini')===on)return;nav.classList.toggle('mini',on);acc=0;lock=performance.now()+380};
+  const upd=()=>{tk=false;const max=sc.scrollHeight-sc.clientHeight,raw=sc.scrollTop;
+    if(raw<0||raw>max){last=Math.max(0,Math.min(max,raw));return}
+    const y=raw,d=y-last;last=y;
+    if(y<40){set(false);return}
+    if(performance.now()<lock)return;
     if((d>0)!==(acc>0))acc=0;acc+=d;
-    if(acc>18)nav.classList.add('mini');else if(acc<-18)nav.classList.remove('mini')};
+    if(acc>30)set(true);else if(acc<-50)set(false)};
   (sc===document.scrollingElement?window:sc).addEventListener('scroll',()=>{if(!tk){tk=true;requestAnimationFrame(upd)}},{passive:true});
-  window.addEventListener('hashchange',()=>{nav.classList.remove('mini');last=0;acc=0});
+  window.addEventListener('hashchange',()=>{set(false);last=0;acc=0});
 })();
 
 // ---------- swipe tra i mesi: come scorrere delle foto ----------

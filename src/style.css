@@ -296,18 +296,28 @@ h1,h2,.monthnav h1{letter-spacing:-.6px}
 
 /* barra in basso: sospesa, vetro smerigliato; si riduce scorrendo verso il basso */
 .tabs{position:fixed;left:0;right:0;bottom:calc(env(safe-area-inset-bottom) + 10px);z-index:20;display:flex;justify-content:center;padding:0 14px;pointer-events:none}
-.tabs .in{pointer-events:auto;width:100%;max-width:520px;height:68px;padding:0 6px;border-radius:34px;background:var(--bar);-webkit-backdrop-filter:blur(28px) saturate(170%);backdrop-filter:blur(28px) saturate(170%);border:1px solid var(--bar-line);box-shadow:var(--bar-shadow);display:grid;grid-template-columns:repeat(5,minmax(0,1fr));align-items:center;transition:max-width .32s cubic-bezier(.2,.8,.2,1),height .32s cubic-bezier(.2,.8,.2,1),border-radius .32s}
-.tabs a{height:56px;border-radius:28px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;color:var(--bar-sub);text-decoration:none;font-size:11px;font-weight:700;transition:height .32s cubic-bezier(.2,.8,.2,1),background .2s,color .2s}
-.tabs a svg{width:23px;height:23px;flex:none}
-.tabs a span{display:block;line-height:14px;max-height:14px;overflow:hidden;transition:max-height .28s,opacity .2s}
-.tabs a[aria-current="page"]{background:var(--bar-act);color:var(--ink);font-weight:800}
-.tabs .fab{justify-self:center;width:50px;height:50px;border-radius:25px;border:0;background:var(--ink);color:var(--bg);display:flex;align-items:center;justify-content:center;padding:0;transition:width .32s,height .32s}
+/* v63: la barra si riduce solo con trasformazioni (niente ricalcolo del layout), curva morbida tipo iOS */
+.tabs{--ease:cubic-bezier(.32,.72,0,1);--dur:.55s;--W:min(520px,100vw - 28px);--u:calc((var(--W) - 12px) / 5 - 57.6px)}
+.tabs .in{pointer-events:auto;position:relative;isolation:isolate;width:100%;max-width:520px;height:68px;padding:0 6px;display:grid;grid-template-columns:repeat(5,minmax(0,1fr));align-items:center}
+.tabs .in::before{content:"";position:absolute;z-index:-1;top:0;bottom:0;left:0;right:0;border-radius:999px;background:var(--bar);-webkit-backdrop-filter:blur(28px) saturate(170%);backdrop-filter:blur(28px) saturate(170%);border:1px solid var(--bar-line);box-shadow:var(--bar-shadow);transition:top var(--dur) var(--ease),bottom var(--dur) var(--ease),left var(--dur) var(--ease),right var(--dur) var(--ease)}
+.tabs a{position:relative;height:56px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;color:var(--bar-sub);text-decoration:none;font-size:11px;font-weight:700;transition:transform var(--dur) var(--ease),color .25s;will-change:transform}
+.tabs a::before{content:"";position:absolute;inset:0;z-index:-1;border-radius:28px;background:var(--bar-act);opacity:0;transition:transform var(--dur) var(--ease),opacity .25s}
+.tabs a[aria-current="page"]{color:var(--ink);font-weight:800}
+.tabs a[aria-current="page"]::before{opacity:1}
+.tabs a svg{width:23px;height:23px;flex:none;transition:transform var(--dur) var(--ease)}
+.tabs a span{display:block;line-height:14px;height:14px;white-space:nowrap;transition:opacity .3s ease,transform var(--dur) var(--ease)}
+.tabs .fab{justify-self:center;width:50px;height:50px;border-radius:25px;border:0;background:var(--ink);color:var(--bg);display:flex;align-items:center;justify-content:center;padding:0;transition:transform var(--dur) var(--ease);will-change:transform}
 .tabs .fab svg{width:24px;height:24px}
-.tabs.mini .in{max-width:300px;height:56px;border-radius:28px}
-.tabs.mini a{height:46px;border-radius:23px}
-.tabs.mini a span{max-height:0;opacity:0}
-.tabs.mini .fab{width:42px;height:42px;border-radius:21px}
-@media (prefers-reduced-motion: reduce){.tabs .in,.tabs a,.tabs a span,.tabs .fab{transition:none}}
+.tabs.mini .in::before{top:6px;bottom:6px;left:calc((100% - 300px) / 2);right:calc((100% - 300px) / 2)}
+.tabs.mini .in>:nth-child(1){transform:translateX(calc(var(--u) * 2))}
+.tabs.mini .in>:nth-child(2){transform:translateX(var(--u))}
+.tabs.mini .in>:nth-child(4){transform:translateX(calc(var(--u) * -1))}
+.tabs.mini .in>:nth-child(5){transform:translateX(calc(var(--u) * -2))}
+.tabs.mini a::before{transform:scale(.8,.8)}
+.tabs.mini a svg{transform:translateY(7.5px)}
+.tabs.mini a span{opacity:0;transform:translateY(6px) scale(.85);transition:opacity .18s ease,transform var(--dur) var(--ease)}
+.tabs.mini .fab{transform:scale(.84)}
+@media (prefers-reduced-motion: reduce){.tabs .in::before,.tabs a,.tabs a::before,.tabs a svg,.tabs a span,.tabs .fab{transition:none}}
 .pg{padding-bottom:calc(env(safe-area-inset-bottom) + 104px)}
 
 /* schermata di apertura: «budget.» su nero */
