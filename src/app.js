@@ -391,11 +391,23 @@ function vDati(){
   return header('Dati',{month:false,h:'Dati e collegamento'})+`<section class="card dati-card"><h2>Esporta in Excel</h2><p class="note">Un file .xlsx con tre fogli: Spese (prospetto per categoria e mese, entrate, saldo e avanzo), Registro (tutti i movimenti con metodo e stato, filtrabile) e Stipendi (netti, lordi e confronto con l'anno prima).</p><button class="pill-btn" data-act="export" style="justify-content:center">Scarica Budget_${S.anno}.xlsx</button><hr class="sep"><h2>Collegamento dati</h2><p class="note">${esc(syncLine())}. I dati stanno nel tuo Google Sheet "Budget Michele – Dati app".</p><div class="actions"><button class="pill-btn soft" data-act="syncnow">Sincronizza ora</button><a class="pill-btn soft" href="#collega" style="text-decoration:none;justify-content:center">Cambia collegamento</a></div></section>`;
 }
 function vAltro(){
-  const items=[['entrate','Prospetto Entrate','Stipendi, 13ª e 14ª, entrate spot, storni, riporto'],['prospetto','Prospetto Uscite','Categorie per mese, saldo e avanzo'],['previsioni','Previsioni','Spese di inizio anno: certe, variabili e budget'],['categorie','Categorie','Spese, entrate e metodi di pagamento'],['simula','Simulatore','Prova spese e netti ipotetici'],['dati','Dati e collegamento','Esporta in Excel, sincronizzazione, Google Sheet']];
-  const yrs=anni();const nx=S.anno+1;
-  return header('Altro',{month:false,h:'Altro'})+`<section class="card tight menu"><div class="list">${items.map(([k,t,s])=>`<a class="item" href="#${k}" style="color:inherit;text-decoration:none"><span class="grow"><span class="t">${t}</span><span class="s">${s}</span></span><span class="chev">${ICON.chev}</span></a>`).join('')}</div></section>`+
-  `<section class="card"><h2>Anno</h2><div class="chips" role="group" aria-label="Anno">${yrs.map(a=>`<button data-act="anno" data-k="${a}" aria-pressed="${a===S.anno}">${a}</button>`).join('')}</div>${previsionaleCreato(nx)?`<button class="pill-btn soft" data-act="annullaanno" data-k="${nx}">Annulla previsionale ${nx}</button><p class="note">Toglie le voci create da "Crea previsionale ${nx}" (quelle che hai inserito o modificato a mano restano), così puoi ricrearlo.</p>`:''}${previsionaleCreato(nx)?'':`<button class="pill-btn soft" data-act="creaanno" data-k="${nx}">Crea previsionale ${nx}</button><p class="note">Riporta nel ${nx} le spese fisse e ricorrenti attive a Dicembre (non le rate e le categorie escluse); le variabili partono da zero. Prima di creare vedi l'elenco.</p>`}</section>`+
-  `<section class="card"><h2>Tema</h2><div class="seg" role="group" aria-label="Tema"><button data-act="setmode" data-k="auto" aria-pressed="${S.mode==='auto'}">Automatico</button><button data-act="setmode" data-k="light" aria-pressed="${S.mode==='light'}">Chiaro</button><button data-act="setmode" data-k="dark" aria-pressed="${S.mode==='dark'}">Scuro</button></div></section>`;
+  const nx=S.anno+1,creato=previsionaleCreato(nx);
+  const link=(k,t,sub)=>`<a class="item" href="#${k}" style="color:inherit;text-decoration:none"><span class="grow"><span class="t">${t}</span><span class="s">${sub}</span></span><span class="chev">${ICON.chev}</span></a>`;
+  const azione=(act,t,sub)=>`<button class="item" data-act="${act}" data-k="${nx}"><span class="grow"><span class="t">${t}</span><span class="s">${sub}</span></span><span class="chev">${ICON.chev}</span></button>`;
+  const gruppo=(tit,righe)=>`<p class="sec-title">${tit}</p><section class="card tight menu"><div class="list">${righe.join('')}</div></section>`;
+  return header('Altro',{month:false,h:'Altro'})+
+   gruppo('Prospetti '+S.anno,[
+     link('prospetto','Prospetto Uscite','Categorie mese per mese, saldo e avanzo'),
+     link('entrate','Prospetto Entrate','Stipendi, 13ª e 14ª, entrate spot, tasse, riporto')])+
+   gruppo('Pianificazione',[
+     link('previsioni','Previsioni '+S.anno,'Spese ricorrenti: certe, variabili e budget'),
+     creato?azione('annullaanno','Annulla previsionale '+nx,`Toglie le voci create in automatico (quelle inserite o modificate a mano restano)`)
+           :azione('creaanno','Crea previsionale '+nx,`Riporta nel ${nx} le spese ricorrenti attive a Dicembre; prima vedi l'elenco`),
+     link('simula','Simulatore','Prova spese e netti ipotetici senza toccare i dati')])+
+   gruppo('Impostazioni',[
+     link('categorie','Categorie e metodi','Categorie di spesa e di entrata, metodi di pagamento'),
+     link('dati','Dati e sincronizzazione','Google Sheet, stato della sincronizzazione, esporta in Excel')])+
+   `<section class="card"><h2>Tema</h2><div class="seg" role="group" aria-label="Tema"><button data-act="setmode" data-k="auto" aria-pressed="${S.mode==='auto'}">Automatico</button><button data-act="setmode" data-k="light" aria-pressed="${S.mode==='light'}">Chiaro</button><button data-act="setmode" data-k="dark" aria-pressed="${S.mode==='dark'}">Scuro</button></div></section>`;
 }
 function vProspetto(){
   const y=Y();
