@@ -260,3 +260,6 @@ input,select,textarea{font-size:max(16px,1em)}
 tr.sel td{background:color-mix(in srgb,var(--accent) 8%,transparent)}
 html,body{overflow-x:clip}
 .pg-ghost{z-index:0}
+.plist{margin:0;padding-left:18px;display:flex;flex-direction:column;gap:3px;font-size:14px}
+.plist.muted{color:var(--sub)}
+.cb-text{margin:0}

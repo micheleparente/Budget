@@ -11,21 +11,21 @@ const st=v=>v===null||v===undefined?'':String(v);
 function rawToD(raw){
   raw=raw||{};
   const catAll=(raw.categorie||[]).filter(c=>c.id);const entrate=catAll.filter(c=>st(c.tipo)==='entrata').map(c=>({id:st(c.id),nome:st(c.nome),ordine:nz(c.ordine)||0}));
-  const categorie=catAll.filter(c=>st(c.tipo)!=='entrata').map(c=>({id:st(c.id),nome:st(c.nome),tipo:st(c.tipo)||'variabile',ordine:nz(c.ordine)||0,dal:nz(c.dal),al:nz(c.al)}));
+  const categorie=catAll.filter(c=>st(c.tipo)!=='entrata').map(c=>({id:st(c.id),nome:st(c.nome),tipo:st(c.tipo)||'variabile',ordine:nz(c.ordine)||0,dal:nz(c.dal),al:nz(c.al),noprev:c.noprev===true||String(c.noprev).toUpperCase()==='TRUE'}));
   const metodi=(raw.metodi||[]).map(m=>st(m.nome)).filter(Boolean);
   const riporti={};(raw.riporti||[]).forEach(r=>{if(r.anno!=null)riporti[String(nz(r.anno))]=nz(r.importo)||0});
   const movimenti=(raw.movimenti||[]).filter(x=>x.id).map(x=>{const o={id:st(x.id),anno:nz(x.anno),mese:nz(x.mese),data:x.data?st(x.data):null,tipo:st(x.tipo),categoria:x.categoria?st(x.categoria):null,descrizione:st(x.descrizione),importo:nz(x.importo)||0,metodo:x.metodo?st(x.metodo):null};
     if(x.gruppo){o.gruppo=st(x.gruppo);o.quota=st(x.quota);o.totale=nz(x.totale)}return o});
   const previsioni=(raw.previsioni||[]).filter(x=>x.id).map(x=>{const eff={};MB_.forEach((m,i)=>{const v=nz(x['Eff '+m]);if(v!=null)eff[String(i+1)]=v});
-    return {id:st(x.id),scadenza:x.scadenza===true||String(x.scadenza).toUpperCase()==='TRUE',anno:nz(x.anno),categoria:st(x.categoria),descrizione:st(x.descrizione),tipo:st(x.tipo)||'certo',giorno:nz(x.giorno),metodo:x.metodo?st(x.metodo):null,serie:x.serie?st(x.serie):null,freq:nz(x.freq),importi:MB_.map(m=>nz(x[m])),effettivi:eff}});
+    return {id:st(x.id),scadenza:x.scadenza===true||String(x.scadenza).toUpperCase()==='TRUE',anno:nz(x.anno),categoria:st(x.categoria),descrizione:st(x.descrizione),tipo:st(x.tipo)||'certo',giorno:nz(x.giorno),metodo:x.metodo?st(x.metodo):null,serie:x.serie?st(x.serie):null,freq:nz(x.freq),rate:x.rate===true||String(x.rate).toUpperCase()==='TRUE',origine:x.origine?st(x.origine):null,importi:MB_.map(m=>nz(x[m])),effettivi:eff}});
   const stipendi=(raw.stipendi||[]).filter(x=>x.id).map(x=>({id:st(x.id),anno:nz(x.anno),mese:nz(x.mese),netto:nz(x.netto),lordo:nz(x.lordo),stato:st(x.stato)||'confermato'}));
   return {config:{nome:'Michele Parente',categorie,entrate,metodi,riporti},movimenti,previsioni,stipendi};
 }
-function prevToRow(d){const r={anno:d.anno,categoria:d.categoria,descrizione:d.descrizione,tipo:d.tipo,giorno:d.giorno??null,metodo:d.metodo??null,scadenza:!!d.scadenza,serie:d.serie??null,freq:d.freq??null};
+function prevToRow(d){const r={anno:d.anno,categoria:d.categoria,descrizione:d.descrizione,tipo:d.tipo,giorno:d.giorno??null,metodo:d.metodo??null,scadenza:!!d.scadenza,serie:d.serie??null,freq:d.freq??null,rate:!!d.rate,origine:d.origine??null};
   MB_.forEach((m,i)=>{r[m]=d.importi?d.importi[i]:null;const e=d.effettivi&&d.effettivi[String(i+1)];r['Eff '+m]=e==null?null:e});return r}
 function movToRow(d){return {anno:d.anno,mese:d.mese,data:d.data||null,tipo:d.tipo,categoria:d.categoria||null,descrizione:d.descrizione||'',importo:d.importo,metodo:d.metodo||null,gruppo:d.gruppo||null,quota:d.quota||null,totale:d.totale??null}}
 function configOps(c){return [
-  {op:'replace',col:'categorie',rows:(c.categorie||[]).map(x=>({id:x.id,nome:x.nome,tipo:x.tipo,ordine:x.ordine,dal:x.dal??null,al:x.al??null})).concat((c.entrate||[]).map(x=>({id:x.id,nome:x.nome,tipo:'entrata',ordine:x.ordine,dal:null,al:null})))},
+  {op:'replace',col:'categorie',rows:(c.categorie||[]).map(x=>({id:x.id,nome:x.nome,tipo:x.tipo,ordine:x.ordine,dal:x.dal??null,al:x.al??null,noprev:!!x.noprev})).concat((c.entrate||[]).map(x=>({id:x.id,nome:x.nome,tipo:'entrata',ordine:x.ordine,dal:null,al:null})))},
   {op:'replace',col:'metodi',rows:(c.metodi&&c.metodi.length?c.metodi:METODI_DEF).map(n=>({nome:n}))},
   {op:'replace',col:'riporti',rows:Object.entries(c.riporti||{}).map(([a,v])=>({anno:+a,importo:v}))}]}
 
