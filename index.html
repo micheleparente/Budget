@@ -834,7 +834,7 @@ function sheetAdd(kind='uscita'){
    <div class="field k-stip"><label for="a-sm">Mensilità</label><select id="a-sm">${stipOptions(curM())}</select></div>
    <div class="field"><label for="a-imp" id="a-implbl">Importo (€)</label><input id="a-imp" class="big num" inputmode="decimal" autocomplete="off" placeholder="0,00" data-autofocus></div>
    <div class="field k-stip"><label for="a-lordo">Lordo (€)</label><input id="a-lordo" class="num" inputmode="decimal" placeholder="facoltativo"></div>
-   <div class="field k-cat"><label for="a-cat">Categoria</label><select id="a-cat">${catOptions(def)}</select></div>
+   <div class="field k-cat"><label for="a-cat">Categoria</label><select id="a-cat"><option value="" selected disabled>Scegli una categoria</option>${catOptions('')}</select></div>
    <div class="field k-ecat"><label for="a-ecat">Categoria entrata</label><select id="a-ecat">${ecatOptions('')}</select><p class="note">Le crei in Altro → Categorie → Entrate.</p></div>
    <div class="field k-met"><label id="a-metlbl">Metodo di pagamento</label>${metPick(lastMet()||metodi()[0])}</div>
    <div class="field k-prev"><label>Tipo</label><div class="seg" role="group" aria-label="Tipo di previsione"><button type="button" data-ptipo="certo">Importo certo</button><button type="button" data-ptipo="variabile">Variabile</button><button type="button" data-ptipo="budget">Budget</button></div><p class="note" id="a-ptnote"></p></div>
@@ -882,6 +882,7 @@ function sheetAdd(kind='uscita'){
     imp.addEventListener('input',RE.refresh);ms.addEventListener('change',RE.refresh);
     $('#f-add').onsubmit=async e=>{e.preventDefault();if(!(verso==='entrata'&&sub==='stipendio'))setLastMet(met);
       const v=num(imp.value);if(!(v>0)){imp.focus();toast('Scrivi un importo maggiore di zero');return}
+      if((verso!=='entrata'||sub==='reso')&&!$('#a-cat').value){$('#a-cat').focus();toast('Scegli una categoria');return}
       const desc=$('#a-desc').value.trim();
       if(verso==='prevista'){const ms_=prevMesi();if(!ms_.length){toast('"Fino a" deve venire dopo "Dal mese"');return}
         const importi=Array(12).fill(null);ms_.forEach(m=>importi[m-1]=r2(v));const g=parseInt($('#a-pg').value,10);const cat=$('#a-cat').value;
