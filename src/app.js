@@ -41,7 +41,7 @@ const S={
   mode:(()=>{try{return localStorage.getItem('budget-mode')||'auto'}catch(e){return 'auto'}})(),
   icona:(()=>{const q=(location.search.match(/icona=(scura|chiara)/)||[])[1];if(q){try{localStorage.setItem('budget-icona',q)}catch(e){}return q}try{return localStorage.getItem('budget-icona')||'chiara'}catch(e){return 'chiara'}})()
 };
-function applyIcona(){const d=S.icona==='scura'?'-scura':'';const a=document.querySelector('link[rel=apple-touch-icon]');if(a)a.href='apple-touch-icon'+d+'.png';const m=document.querySelector('link[rel=manifest]');if(m)m.href='manifest'+d+'.webmanifest'}
+function applyIcona(){const d=S.icona==='scura'?'-scura':'';const a=document.querySelector('link[rel=apple-touch-icon]');if(a)a.href='apple-touch-icon-b2'+d+'.png';const m=document.querySelector('link[rel=manifest]');if(m)m.href='manifest'+d+'.webmanifest'}
 function saveIcona(){try{localStorage.setItem('budget-icona',S.icona)}catch(e){}applyIcona()}
 function applyPriv(){document.documentElement.classList.toggle('priv',!!S.priv)}
 function applyMode(){const r=document.documentElement;if(S.mode==='auto')r.removeAttribute('data-mode');else r.setAttribute('data-mode',S.mode)}

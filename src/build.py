@@ -17,9 +17,9 @@ html=f'''<!DOCTYPE html>
 <meta name="robots" content="noindex, nofollow">
 <title>Budget Michele</title>
 <link rel="manifest" href="manifest.webmanifest">
-<link rel="apple-touch-icon" href="apple-touch-icon.png">
-<script>try{{var q=(location.search.match(/icona=(scura|chiara)/)||[])[1]||localStorage.getItem('budget-icona');if(q==='scura'){{document.querySelector('link[rel=apple-touch-icon]').href='apple-touch-icon-scura.png';document.querySelector('link[rel=manifest]').href='manifest-scura.webmanifest'}}}}catch(e){{}}</script>
-<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="apple-touch-icon-b2.png">
+<script>try{{var q=(location.search.match(/icona=(scura|chiara)/)||[])[1]||localStorage.getItem('budget-icona');if(q==='scura'){{document.querySelector('link[rel=apple-touch-icon]').href='apple-touch-icon-b2-scura.png';document.querySelector('link[rel=manifest]').href='manifest-scura.webmanifest'}}}}catch(e){{}}</script>
+<link rel="icon" href="icon-192-b2.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Space+Grotesk:wght@600;700&display=swap" rel="stylesheet">

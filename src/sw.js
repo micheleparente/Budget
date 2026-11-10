@@ -1,6 +1,6 @@
 // Copia offline dell'app. Cambia VERSIONE a ogni aggiornamento.
-const VERSIONE='budget-v60';
-const FILES=['./','./index.html','./manifest.webmanifest','./apple-touch-icon.png','./icon-192.png','./icon-512.png','./manifest-scura.webmanifest','./apple-touch-icon-scura.png','./icon-192-scura.png','./icon-512-scura.png'];
+const VERSIONE='budget-v61';
+const FILES=['./','./index.html','./manifest.webmanifest','./manifest-scura.webmanifest','./apple-touch-icon-b2.png','./apple-touch-icon-b2-scura.png','./icon-192-b2.png','./icon-512-b2.png','./icon-192-b2-scura.png','./icon-512-b2-scura.png'];
 self.addEventListener('install',e=>{e.waitUntil(caches.open(VERSIONE).then(c=>c.addAll(FILES)));self.skipWaiting()});
 self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(k=>Promise.all(k.filter(n=>n!==VERSIONE).map(n=>caches.delete(n)))).then(()=>self.clients.claim()))});
 self.addEventListener('fetch',e=>{
