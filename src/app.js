@@ -331,7 +331,7 @@ function vAltro(){
   const items=[['entrate','Prospetto Entrate','Stipendi, 13ª e 14ª, entrate spot, storni, riporto'],['prospetto','Prospetto Uscite','Categorie per mese, saldo e avanzo'],['previsioni','Previsioni','Spese di inizio anno: certe, variabili e budget'],['categorie','Categorie','Spese, entrate e metodi di pagamento'],['simula','Simulatore','Prova spese e netti ipotetici'],['dati','Dati e collegamento','Esporta in Excel, sincronizzazione, Google Sheet']];
   const yrs=anni();const nx=S.anno+1;
   return header('Altro',{month:false,h:'Altro'})+`<section class="card tight menu"><div class="list">${items.map(([k,t,s])=>`<a class="item" href="#${k}" style="color:inherit;text-decoration:none"><span class="grow"><span class="t">${t}</span><span class="s">${s}</span></span><span class="chev">${ICON.chev}</span></a>`).join('')}</div></section>`+
-  `<section class="card"><h2>Anno</h2><div class="chips" role="group" aria-label="Anno">${yrs.map(a=>`<button data-act="anno" data-k="${a}" aria-pressed="${a===S.anno}">${a}</button>`).join('')}</div>${previsionaleCreato(nx)?'':`<button class="pill-btn soft" data-act="creaanno" data-k="${nx}">Crea previsionale ${nx}</button><p class="note">Riporta nel ${nx} le spese fisse e ricorrenti attive a Dicembre (non le rate e le categorie escluse); le variabili partono da zero. Prima di creare vedi l'elenco.</p>`}</section>`+
+  `<section class="card"><h2>Anno</h2><div class="chips" role="group" aria-label="Anno">${yrs.map(a=>`<button data-act="anno" data-k="${a}" aria-pressed="${a===S.anno}">${a}</button>`).join('')}</div>${previsionaleCreato(nx)?`<button class="pill-btn soft" data-act="annullaanno" data-k="${nx}">Annulla previsionale ${nx}</button><p class="note">Toglie le voci create da "Crea previsionale ${nx}" (quelle che hai inserito o modificato a mano restano), così puoi ricrearlo.</p>`:''}${previsionaleCreato(nx)?'':`<button class="pill-btn soft" data-act="creaanno" data-k="${nx}">Crea previsionale ${nx}</button><p class="note">Riporta nel ${nx} le spese fisse e ricorrenti attive a Dicembre (non le rate e le categorie escluse); le variabili partono da zero. Prima di creare vedi l'elenco.</p>`}</section>`+
   `<section class="card"><h2>Tema</h2><div class="seg" role="group" aria-label="Tema"><button data-act="setmode" data-k="auto" aria-pressed="${S.mode==='auto'}">Automatico</button><button data-act="setmode" data-k="light" aria-pressed="${S.mode==='light'}">Chiaro</button><button data-act="setmode" data-k="dark" aria-pressed="${S.mode==='dark'}">Scuro</button></div></section>`;
 }
 function vProspetto(){
@@ -683,6 +683,13 @@ function pianoPrevisionale(n){
     else{salta.push({p,why:'finita prima di Dicembre'});return}
     porta.push({p,importi:nuovi})});
   return {porta,salta}}
+async function annullaAnno(n){
+  const L=S.D.previsioni.filter(p=>p.anno===n&&(p.origine==='previsionale'||/^Stima da /.test(p.descrizione||'')));
+  if(!L.length){toast('Nessun previsionale '+n+' da annullare');return}
+  const conf=L.filter(p=>p.effettivi&&Object.keys(p.effettivi).length).length;
+  if(!await confirmBox('Annulla previsionale '+n,`Tolgo le ${L.length} voci create da "Crea previsionale ${n}"${conf?` (${conf} hanno già importi confermati, che si perdono)`:''}. Movimenti, stipendi, rate e previsioni inserite a mano restano. Poi puoi ricrearlo.`,'Annulla previsionale',true))return;
+  await batch(async()=>{for(const p of L)await del('previsioni/'+p.id)});toast(`Previsionale ${n} annullato: ${L.length} voci tolte`);
+}
 async function creaAnno(n){
   const prevY=n-1;
   if(!haDati(prevY)){toast('Mancano previsioni e movimenti del '+prevY);return}
@@ -736,6 +743,7 @@ document.addEventListener('click',async e=>{
     case 'setanno':setAnno(+k);break;
     case 'anno':S.anno=+k;S.mese=S.anno===today().getFullYear()?today().getMonth()+1:1;if(S.view!=='home')location.hash='#home';else render();break;
     case 'creaanno':creaAnno(+k);break;
+    case 'annullaanno':annullaAnno(+k);break;
     case 'simspesa':sheetSimSpesa();break;
     case 'simnetto':sheetSimNetto();break;
     case 'simdel':S.sim.extra.splice(+k,1);render();break;
@@ -803,7 +811,8 @@ function sheetChiusura(){
 }
 function sheetAnno(){
   const yrs=anni(),cur=today().getFullYear(),nx=yrs.find(a=>a>cur&&!previsionaleCreato(a));
-  openSheet('Anno',`<div class="yr-grid">${yrs.map(a=>`<button class="pill-btn ${a===S.anno?'':'soft'}" data-y="${a}">${a}${a===today().getFullYear()?' · in corso':haDati(a)?'':' · vuoto'}</button>`).join('')}</div>${nx?`<button class="link" id="yr-crea" style="align-self:center;margin-top:6px">Crea previsionale ${nx} dal ${nx-1}</button>`:''}`,(el,close)=>{
+  openSheet('Anno',`<div class="yr-grid">${yrs.map(a=>`<button class="pill-btn ${a===S.anno?'':'soft'}" data-y="${a}">${a}${a===today().getFullYear()?' · in corso':haDati(a)?'':' · vuoto'}</button>`).join('')}</div>${nx?`<button class="link" id="yr-crea" style="align-self:center;margin-top:6px">Crea previsionale ${nx} dal ${nx-1}</button>`:''}${previsionaleCreato(cur+1)?`<button class="link" id="yr-ann" style="align-self:center;margin-top:6px">Annulla previsionale ${cur+1}</button>`:''}`,(el,close)=>{
+    if(el.querySelector('#yr-ann'))el.querySelector('#yr-ann').onclick=()=>{close();annullaAnno(cur+1)};
     if(nx)el.querySelector('#yr-crea').onclick=()=>{close();creaAnno(nx)};
     el.querySelectorAll('[data-y]').forEach(b=>b.onclick=()=>{close();setAnno(+b.dataset.y)});
   },{compact:true});
