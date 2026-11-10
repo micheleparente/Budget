@@ -254,6 +254,9 @@ tr.click{cursor:pointer}
 .dati-card h2{margin-bottom:0}
 .dati-card .actions{flex-direction:column}
 .dati-card .actions>*{width:100%;justify-content:center;min-height:50px;flex:none}
+html.priv .num,html.priv .amt,html.priv .t-v,html.priv .ring-center .big,html.priv td:not(:first-child),html.priv svg text,html.priv .rate-line,html.priv .sum-line strong{filter:blur(7px);user-select:none;transition:filter .2s}
+html.priv .sec-title,html.priv h1,html.priv h2{filter:none}
+.icon-btn[data-act=priv][aria-pressed=true]{color:var(--accent)}
 
 </style>
 </head>
@@ -479,10 +482,12 @@ const S={
   anno:today().getFullYear(),mese:today().getMonth()+1,
   view:'home',kpi:'mese',regF:'tutti',regCat:'tutte',regMet:'tutti',catAll:false,dueAll:false,
   sim:{extra:[],netti:{}},
+  priv:(()=>{try{return localStorage.getItem('budget-priv')==='1'}catch(e){return false}})(),
   mode:(()=>{try{return localStorage.getItem('budget-mode')||'auto'}catch(e){return 'auto'}})()
 };
+function applyPriv(){document.documentElement.classList.toggle('priv',!!S.priv)}
 function applyMode(){const r=document.documentElement;if(S.mode==='auto')r.removeAttribute('data-mode');else r.setAttribute('data-mode',S.mode)}
-applyMode();
+applyMode();applyPriv();
 function cfg(){return S.D.config||{categorie:[],riporti:{}}}
 const METODI_DEF=['C/C Fineco','Fineco Debit','Fineco Credit','Revolut','AMEX','BBVA'];
 function metodi(){const m=cfg().metodi;return Array.isArray(m)&&m.length?m:METODI_DEF}
@@ -506,7 +511,7 @@ function clean(o){const d=Object.assign({},o);delete d.id;return d}
 
 // ---------- render ----------
 let raf=0;function schedule(){if(!raf)raf=requestAnimationFrame(()=>{raf=0;render()})}
-const VIEWS=['collega','home','dashboard','dettaglio','registro','entrate','altro','prospetto','previsioni','categorie','simula'];
+const VIEWS=['collega','home','dashboard','dettaglio','registro','entrate','altro','prospetto','previsioni','categorie','simula','dati'];
 function tabOf(v){return v==='dettaglio'?'dashboard':['home','dashboard','registro'].includes(v)?v:'altro'}
 function render(){
   const v=document.getElementById('view');
@@ -514,7 +519,7 @@ function render(){
   if(!S.ready){v.innerHTML=stateScreen();return}
   if(!SYNC.api&&S.view!=='collega'){S.view='collega'}
   v.classList.toggle('fit',S.view==='home'&&!!cats().length);
-  const f={collega:vCollega,home:vHome,dashboard:vDashboard,dettaglio:vDettaglio,registro:vRegistro,entrate:vEntrate,altro:vAltro,prospetto:vProspetto,previsioni:vPrevisioni,categorie:vCategorie,simula:vSimula}[S.view]||vHome;
+  const f={collega:vCollega,home:vHome,dashboard:vDashboard,dettaglio:vDettaglio,registro:vRegistro,entrate:vEntrate,altro:vAltro,dati:vDati,prospetto:vProspetto,previsioni:vPrevisioni,categorie:vCategorie,simula:vSimula}[S.view]||vHome;
   v.innerHTML=f();
 }
 function stateScreen(){
@@ -528,7 +533,7 @@ function header(title,opts={}){
   const modeIcon=S.mode==='dark'?ICON.moon:S.mode==='light'?ICON.sun:ICON.auto;
   const modeLbl=S.mode==='dark'?'Tema scuro, tocca per automatico':S.mode==='light'?'Tema chiaro, tocca per scuro':'Tema automatico, tocca per chiaro';
   const nDc=S.ready&&cats().length?Y().ist.filter(i=>i.stato==='daconfermare').length:0;const badge=nDc&&opts.badge!==false?`<button class="dc-badge" data-act="godaconf" aria-label="${nDc} ${nDc===1?'voce':'voci'} da confermare">${nDc} da confermare</button>`:'';
-  return `<div class="hd"><div style="min-width:0"><p class="eyebrow">${esc(title)} · <button class="yr-btn" data-act="pickyear" aria-label="Anno ${S.anno}, tocca per cambiare">${S.anno}<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg></button>${badge}</p>${nav?`<div class="monthnav"><button class="ghost" data-act="mprev" aria-label="Mese precedente" ${S.mese<=1?'disabled':''}>${ICON.prev}</button><h1>${MESI[S.mese-1]}</h1><button class="ghost" data-act="mnext" aria-label="Mese successivo" ${S.mese>=12?'disabled':''}>${ICON.next}</button></div>`:`<h1 style="font-size:26px;font-weight:800;letter-spacing:-.5px">${esc(opts.h||title)}</h1>`}</div><div style="display:flex;gap:8px;align-items:center"><button class="icon-btn" data-act="mode" aria-label="${modeLbl}">${modeIcon}</button></div></div>`;
+  return `<div class="hd"><div style="min-width:0"><p class="eyebrow">${esc(title)} · <button class="yr-btn" data-act="pickyear" aria-label="Anno ${S.anno}, tocca per cambiare">${S.anno}<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg></button>${badge}</p>${nav?`<div class="monthnav"><button class="ghost" data-act="mprev" aria-label="Mese precedente" ${S.mese<=1?'disabled':''}>${ICON.prev}</button><h1>${MESI[S.mese-1]}</h1><button class="ghost" data-act="mnext" aria-label="Mese successivo" ${S.mese>=12?'disabled':''}>${ICON.next}</button></div>`:`<h1 style="font-size:26px;font-weight:800;letter-spacing:-.5px">${esc(opts.h||title)}</h1>`}</div><div style="display:flex;gap:8px;align-items:center">${opts.eye?`<button class="icon-btn" data-act="priv" aria-pressed="${S.priv}" aria-label="${S.priv?'Mostra gli importi':'Nascondi gli importi'}">${S.priv?'<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 3l18 18"/><path d="M10.6 5.1A10.7 10.7 0 0 1 12 5c6.4 0 10 7 10 7a17.6 17.6 0 0 1-3.2 4.1M6.6 6.6C3.8 8.4 2 12 2 12s3.6 7 10 7a9.9 9.9 0 0 0 5.4-1.6"/><path d="M9.9 9.9a3 3 0 0 0 4.2 4.2"/></svg>':'<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg>'}</button>`:''}<button class="icon-btn" data-act="mode" aria-label="${modeLbl}">${modeIcon}</button></div></div>`;
 }
 function media(c,anno){const idx=[...Array(12).keys()].filter(i=>monthState(anno,i+1,today())==='chiuso');const use=idx.length?idx:[...Array(12).keys()];return r2(use.reduce((a,i)=>a+c.mesi[i],0)/use.length)}
 function statoChip(s){return s==='effettivo'?'<span class="chip ok">PAGATA</span>':s==='daconfermare'?'<span class="chip warn">DA CONFERMARE</span>':'<span class="chip sim">PREVISTA</span>'}
@@ -564,7 +569,7 @@ function panoramicaCard(y,m,mi){
 function vHome(){
   if(!cats().length)return header('Budget')+onboarding();
   const y=Y(),mi=S.mese-1,m=y.mesi[mi];
-  return header('Budget')+syncBanner()+anelloCard(y,m,mi)+panoramicaCard(y,m,mi);
+  return header('Budget',{eye:true})+syncBanner()+anelloCard(y,m,mi)+panoramicaCard(y,m,mi);
 }
 
 // ---------- DASHBOARD ----------
@@ -715,12 +720,14 @@ function vEntrate(){
 }
 
 // ---------- ALTRO ----------
+function vDati(){
+  return header('Dati',{month:false,h:'Dati e collegamento'})+`<section class="card dati-card"><h2>Esporta in Excel</h2><p class="note">Un file .xlsx con tre fogli: Spese (prospetto per categoria e mese, entrate, saldo e avanzo), Registro (tutti i movimenti con metodo e stato, filtrabile) e Stipendi (netti, lordi e confronto con l'anno prima).</p><button class="pill-btn" data-act="export" style="justify-content:center">Scarica Budget_${S.anno}.xlsx</button><hr class="sep"><h2>Collegamento dati</h2><p class="note">${esc(syncLine())}. I dati stanno nel tuo Google Sheet "Budget Michele – Dati app".</p><div class="actions"><button class="pill-btn soft" data-act="syncnow">Sincronizza ora</button><a class="pill-btn soft" href="#collega" style="text-decoration:none;justify-content:center">Cambia collegamento</a></div></section>`;
+}
 function vAltro(){
-  const items=[['entrate','Prospetto Entrate','Stipendi, 13ª e 14ª, entrate spot, storni, riporto'],['prospetto','Prospetto Uscite','Categorie per mese, saldo e avanzo'],['previsioni','Previsioni','Spese di inizio anno: certe, variabili e budget'],['categorie','Categorie','Spese, entrate e metodi di pagamento'],['simula','Simulatore','Prova spese e netti ipotetici']];
+  const items=[['entrate','Prospetto Entrate','Stipendi, 13ª e 14ª, entrate spot, storni, riporto'],['prospetto','Prospetto Uscite','Categorie per mese, saldo e avanzo'],['previsioni','Previsioni','Spese di inizio anno: certe, variabili e budget'],['categorie','Categorie','Spese, entrate e metodi di pagamento'],['simula','Simulatore','Prova spese e netti ipotetici'],['dati','Dati e collegamento','Esporta in Excel, sincronizzazione, Google Sheet']];
   const yrs=anni();const nx=S.anno+1;
   return header('Altro',{month:false,h:'Altro'})+`<section class="card tight menu"><div class="list">${items.map(([k,t,s])=>`<a class="item" href="#${k}" style="color:inherit;text-decoration:none"><span class="grow"><span class="t">${t}</span><span class="s">${s}</span></span><span class="chev">${ICON.chev}</span></a>`).join('')}</div></section>`+
   `<section class="card"><h2>Anno</h2><div class="chips" role="group" aria-label="Anno">${yrs.map(a=>`<button data-act="anno" data-k="${a}" aria-pressed="${a===S.anno}">${a}</button>`).join('')}</div>${haDati(nx)?'':`<button class="pill-btn soft" data-act="creaanno" data-k="${nx}">Crea previsionale ${nx}</button><p class="note">Copia previsioni e spese del ${S.anno} come simulazione. I netti mancanti usano la stima anno precedente.</p>`}</section>`+
-  `<p class="sec-title">Dati</p><section class="card dati-card"><h2>Esporta in Excel</h2><p class="note">Un file .xlsx con tre fogli: Spese (prospetto per categoria e mese, entrate, saldo e avanzo), Registro (tutti i movimenti con metodo e stato, filtrabile) e Stipendi (netti, lordi e confronto con l'anno prima).</p><button class="pill-btn" data-act="export" style="justify-content:center">Scarica Budget_${S.anno}.xlsx</button><hr class="sep"><h2>Collegamento dati</h2><p class="note">${esc(syncLine())}. I dati stanno nel tuo Google Sheet "Budget Michele – Dati app".</p><div class="actions"><button class="pill-btn soft" data-act="syncnow">Sincronizza ora</button><a class="pill-btn soft" href="#collega" style="text-decoration:none;justify-content:center">Cambia collegamento</a></div></section>`+
   `<section class="card"><h2>Tema</h2><div class="seg" role="group" aria-label="Tema"><button data-act="setmode" data-k="auto" aria-pressed="${S.mode==='auto'}">Automatico</button><button data-act="setmode" data-k="light" aria-pressed="${S.mode==='light'}">Chiaro</button><button data-act="setmode" data-k="dark" aria-pressed="${S.mode==='dark'}">Scuro</button></div></section>`;
 }
 function vProspetto(){
@@ -1035,6 +1042,7 @@ document.addEventListener('click',async e=>{
   switch(a){
     case 'mprev':if(S.mese>1){S.mese--;render()}break;
     case 'mnext':if(S.mese<12){S.mese++;render()}break;
+    case 'priv':S.priv=!S.priv;try{localStorage.setItem('budget-priv',S.priv?'1':'')}catch(e){}applyPriv();render();break;
     case 'mode':S.mode=S.mode==='auto'?'light':S.mode==='light'?'dark':'auto';saveMode();break;
     case 'setmode':S.mode=k;saveMode();break;
     case 'kpi':S.kpi=k;render();break;
