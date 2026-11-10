@@ -319,6 +319,15 @@ function nettiAnno(D,anno){
   }
   return res;
 }
+function annoHaDati(D,a){return (D.movimenti||[]).some(x=>x.anno===a)||(D.previsioni||[]).some(x=>x.anno===a)||(D.stipendi||[]).some(x=>x.anno===a)}
+// Riporto di Gennaio: se l'anno prima è nell'app = avanzo di Dicembre dell'anno prima, solo se positivo (automatico);
+// un valore inserito a mano (solo per gli anni prima dell'uso dell'app, es. 2026) ha la precedenza.
+function riportoInfo(D,anno,oggi){
+  const man=((D.config&&D.config.riporti)||{})[String(anno)];
+  if(man!=null&&man!=='')return {v:+man||0,auto:false,av:null};
+  if(annoHaDati(D,anno-1)){const av=computeYear(D,anno-1,oggi).mesi[11].avanzo;return {v:av>0?av:0,auto:true,av}}
+  return {v:+(((D.config&&D.config.riporti)||{})[String(anno)]||0),auto:false,av:null};
+}
 function computeYear(D,anno,oggi){
   const cats=((D.config&&D.config.categorie)||[]).slice().sort((a,b)=>a.ordine-b.ordine);
   const mov=(D.movimenti||[]).filter(x=>x.anno===anno);
@@ -327,7 +336,7 @@ function computeYear(D,anno,oggi){
   const N=nettiAnno(D,anno);
   const totNetti=Object.values(N).reduce((a,n)=>a+(+n.netto||0),0);
   const std=r2(totNetti/12);
-  const riporto=+(((D.config&&D.config.riporti)||{})[String(anno)]||0);
+  const RI=riportoInfo(D,anno,oggi),riporto=RI.v;
   const cat={};
   const mk=(id,c)=>cat[id]||(cat[id]={id,nome:c?c.nome:id,tipo:c?c.tipo:'variabile',mesi:Array(12).fill(0),reale:Array(12).fill(0)});
   cats.forEach(c=>mk(c.id,c));
@@ -356,7 +365,7 @@ function computeYear(D,anno,oggi){
     const saldo=r2(disp-tot);cum=r2(cum+saldo);
     mesi.push({m,spot,disp,spese:tot,fisse,variabili:r2(tot-fisse),saldo,avanzo:cum,stato:monthState(anno,m,oggi),daconf:ist.filter(i=>i.m===m&&i.stato==='daconfermare').length});
   }
-  return {anno,std,riporto,netti:N,totNetti:r2(totNetti),cat:Object.values(cat),mesi,ist};
+  return {anno,std,riporto,riportoAuto:RI.auto,riportoAvanzo:RI.av,netti:N,totNetti:r2(totNetti),cat:Object.values(cat),mesi,ist};
 }
 
 // Esportazione Excel: fogli Spese (prospetto), Registro, Stipendi. Usa ExcelJS.
@@ -687,6 +696,7 @@ function righeMese(anno,m){
   const y=Y(anno);const rows=[];
   S.D.movimenti.filter(x=>x.anno===anno&&x.mese===m).forEach(x=>rows.push({k:'mov',x,data:x.data||'',entrata:x.tipo!=='spesa',importo:+x.importo,cat:x.categoria||null,met:x.metodo||'',stato:'effettivo'}));
   y.ist.filter(i=>i.m===m).forEach(i=>rows.push({k:'ist',i,data:anno+'-'+pad(m)+'-'+pad(i.p.giorno||28),entrata:false,importo:i.importo,cat:i.p.categoria,met:i.p.metodo||'',stato:i.stato}));
+  if(m===1&&y.riporto)rows.push({k:'rip',data:anno+'-01-01',entrata:true,importo:y.riporto,cat:null,met:'',stato:'effettivo',auto:y.riportoAuto});
   Object.entries(y.netti).forEach(([mm,n])=>{if(meseStip(+mm)===m)rows.push({k:'stip',mm:+mm,n,data:anno+'-'+pad(m)+'-27',entrata:true,importo:n.netto,cat:null,stato:n.stato==='confermato'?'effettivo':'previsto'})});
   return rows;
 }
@@ -710,6 +720,7 @@ function vRegistro(){
   const budRows=bud.map(p=>{const c=yc.cat.find(x=>x.id===p.categoria);const usato=c?c.reale[S.mese-1]:0;const b=+p.importi[S.mese-1];const pc=Math.min(100,b?usato/b*100:0);return `<button class="item" data-act="editprev" data-id="${esc(p.id)}"><span class="grow"><span class="t">${esc(p.descrizione)} · budget</span><span class="s num">Usati ${eur(usato)} su ${eur(b)}</span><span class="bar" style="margin-top:4px"><i style="width:${pc.toFixed(1)}%;background:${usato>b?'var(--neg)':'var(--accent)'}"></i></span></span>${usato>b?`<span class="amt neg">−${eur(r2(usato-b))}<span class="s" style="display:block;font-weight:500">oltre il budget</span></span>`:`<span class="amt">${eur(r2(b-usato))}<span class="s" style="display:block;font-weight:500">restano</span></span>`}</button>`}).join('');
   const rowHtml=r=>{
     if(r.k==='ist')return istRow(r.i);
+    if(r.k==='rip')return `<button class="item" data-act="editriporto"><span class="badge in">A.P.</span><span class="grow"><span class="t">Riporto dall'anno precedente</span><span class="s">Entrata · ${r.auto?'avanzo di Dicembre '+(S.anno-1)+', calcolato in automatico':'inserito a mano'}</span></span><span class="amt pos">+${eur(r.importo)}</span></button>`;
     if(r.k==='stip'){const sim=r.n.stato!=='confermato';return `<button class="item ${sim?'is-prev':''}" data-act="editstip" data-k="${r.mm}"><span class="badge in">€</span><span class="grow"><span class="t">Stipendio ${nomeStip(r.mm)}</span><span class="s">Entrata · ${sim?'stima anno precedente <span class="chip sim">SIMULATO</span>':'netto confermato'}</span></span><span class="amt pos">+${eur(r.importo)}</span></button>`}
     const x=r.x;const tl=x.tipo==='spot'?'Entrata spot'+(entName(x.categoria)?' · '+esc(entName(x.categoria)):''):x.tipo==='reso'?'Storno / reso · '+esc(catName(x.categoria)):esc(catName(x.categoria));
     return `<button class="item" data-act="editmov" data-id="${esc(x.id)}"><span class="badge ${r.entrata?'in':''}">${r.entrata?'+':esc(initials(catName(x.categoria)))}</span><span class="grow"><span class="t">${esc(x.descrizione||catName(x.categoria))}</span><span class="s">${tl}${x.data?' · '+fmtDate(x.data):''}${x.metodo?' · '+esc(x.metodo):''}${x.quota?' · quota '+esc(x.quota):''}</span></span><span class="amt ${r.entrata?'pos':''}">${r.entrata?'+':'−'}${eur(r.importo)}${x.gruppo?`<span class="s" style="display:block;font-weight:500">di ${eur(+x.totale||0)}</span>`:''}</span></button>`};
@@ -730,13 +741,13 @@ function vEntrate(){
   const mv=S.D.movimenti.filter(x=>x.anno===S.anno);
   const spot=mv.filter(x=>x.tipo==='spot').sort((a,b)=>a.mese-b.mese||(a.data||'').localeCompare(b.data||''));
   const resi=mv.filter(x=>x.tipo==='reso').sort((a,b)=>a.mese-b.mese);
-  const rip=+((cfg().riporti||{})[S.anno]||0);
+  const rip=y.riporto;
   const li=x=>`<button class="item" data-act="editmov" data-id="${esc(x.id)}"><span class="badge in">${MB[x.mese-1]}</span><span class="grow"><span class="t">${esc(x.descrizione)}</span><span class="s">${x.tipo==='reso'?esc(catName(x.categoria))+' · ':entName(x.categoria)?esc(entName(x.categoria))+' · ':''}${fmtDate(x.data)}</span></span><span class="amt pos">+${eur(+x.importo)}</span></button>`;
   return header('Entrate',{month:false,h:'Prospetto Entrate'})+
    `<div class="actions"><button class="pill-btn" data-act="add" data-k="stipendio">+ Stipendio</button><button class="pill-btn soft" data-act="add" data-k="spot">+ Entrata spot</button></div>`+
    `<section class="card"><div class="tiles"><div class="tile hero"><span class="t-l">Stipendio standard</span><span class="t-v num">${eur(y.std)}</span><span class="t-n">(12 netti + 13ª + 14ª) / 12</span></div><div class="tile"><span class="t-l">Netti anno</span><span class="t-v num">${eur(y.totNetti)}</span><span class="t-n num">${pt?'a.p. '+sgn(r2(y.totNetti-pt)):(tl?'Lordo '+eur(tl):'')}</span></div></div><p class="note">I mesi senza netto registrato usano la stima anno precedente (SIM). Quando registri lo stipendio diventa confermato (OK) e lo standard si ricalcola.</p></section>`+
    (rows.length?`<div class="table-box"><table><thead><tr><th>Mese</th><th>Netto</th><th>Lordo</th><th>Δ netto a.p.</th><th>Δ lordo a.p.</th><th>Stato</th></tr></thead><tbody>${rows.join('')}<tr class="tot"><td>Totale</td><td>${n2(y.totNetti)}</td><td>${tl?n2(tl):'–'}</td><td>${pt?n2(r2(y.totNetti-pt)):'–'}</td><td></td><td></td></tr></tbody></table></div>`:'<p class="empty">Nessuno stipendio registrato per il '+S.anno+' né per l\'anno prima.</p>')+
-   `<p class="sec-title">Entrate spot</p><section class="card tight"><div class="list"><button class="item" data-act="editriporto"><span class="badge in">A.P.</span><span class="grow"><span class="t">Riporto dall'anno precedente</span><span class="s">Conta solo a Gennaio</span></span><span class="amt ${rip<0?'neg':''}">${eur(rip)}</span></button>${spot.map(li).join('')}</div></section>`+
+   `<p class="sec-title">Entrate spot</p><section class="card tight"><div class="list"><button class="item" data-act="editriporto"><span class="badge in">A.P.</span><span class="grow"><span class="t">Riporto dall'anno precedente</span><span class="s">${y.riportoAuto?`Avanzo di Dicembre ${S.anno-1}${y.riportoAvanzo<0?' negativo: non riportato':''} · automatico`:'Inserito a mano · conta solo a Gennaio'}</span></span><span class="amt">${eur(rip)}</span></button>${spot.map(li).join('')}</div></section>`+
    `<p class="sec-title">Storni e resi</p><section class="card tight"><div class="list">${resi.map(li).join('')||'<p class="empty">Nessuno storno o reso. Riducono la spesa della loro categoria.</p>'}</div></section>`;
 }
 
@@ -1013,6 +1024,7 @@ function sheetStip(m){
   });
 }
 function sheetRiporto(){
+  {const yy=Y();if(yy.riportoAuto){openSheet('Riporto '+S.anno,`<p style="margin:0">Il riporto di Gennaio ${S.anno} è calcolato in automatico: è l'avanzo cumulato di Dicembre ${S.anno-1} (${sgn(yy.riportoAvanzo)}), riportato solo se positivo. Si aggiorna da solo se cambi spese o netti del ${S.anno-1}.</p><div class="actions" style="margin-top:14px"><button class="pill-btn" data-x>Ho capito</button></div>`,(el,close)=>{el.querySelector('[data-x]').onclick=close},{compact:true});return}}
   const v=+((cfg().riporti||{})[S.anno]||0);
   openSheet('Riporto '+S.anno,`<form id="f-r" novalidate style="display:flex;flex-direction:column;gap:14px"><div class="field"><label for="r-v">Riporto dall'anno precedente (€)</label><input id="r-v" class="big num" inputmode="decimal" value="${inp(v)}"></div><p class="note">Si somma alla disponibilità di Gennaio. Negativo se riporti un disavanzo.</p><div class="actions"><button class="pill-btn" type="submit">Salva</button></div></form>`,(el,close)=>{
     el.querySelector('#f-r').onsubmit=async e=>{e.preventDefault();const n=num(el.querySelector('#r-v').value);if(isNaN(n)){toast('Importo non valido');return}const c=JSON.parse(JSON.stringify(cfg()));c.riporti=c.riporti||{};c.riporti[String(S.anno)]=r2(n);await saveConfig(c);close();toast('Riporto: '+eur(n))};
@@ -1055,13 +1067,13 @@ async function simConfirm(){
 async function creaAnno(n){
   const prevY=n-1;
   if(!haDati(prevY)){toast('Mancano previsioni e movimenti del '+prevY);return}
-  if(!await confirmBox('Crea previsionale '+n,`Copio le previsioni del ${prevY} (senza le conferme) e aggiungo, per ogni categoria, un budget pari alle altre spese del ${prevY}. Il riporto di Gennaio parte dall'avanzo di fine ${prevY}. I netti si prendono già in automatico dal ${prevY}. Procedo?`,'Crea'))return;
+  if(!await confirmBox('Crea previsionale '+n,`Copio le previsioni del ${prevY} (senza le conferme) e aggiungo, per ogni categoria, un budget pari alle altre spese del ${prevY}. Il riporto di Gennaio è automatico: avanzo di fine ${prevY}, se positivo. I netti usano la stima anno precedente. Procedo?`,'Crea'))return;
   const y=computeYear(S.D,prevY,today());
   const attN=id=>{const c=cats().find(x=>x.id===id);return !c||catAttiva(c,n)};const pv=S.D.previsioni.filter(p=>p.anno===prevY&&attN(p.categoria));const ist=istanze(S.D,prevY,today());
   for(const p of pv){const d=clean(p);d.anno=n;d.effettivi={};await put('previsioni/'+newId('previsioni'),d)}
   for(const c of y.cat.filter(c=>attN(c.id))){const imp=c.mesi.map((v,i)=>{const pre=ist.filter(x=>x.p.categoria===c.id&&x.m===i+1).reduce((a,x)=>a+x.importo,0);const r=r2(v-pre);return r>0.004?r:null});
     if(imp.some(v=>v!=null)&&!pv.some(p=>p.categoria===c.id&&p.tipo==='budget'))await put('previsioni/'+newId('previsioni'),{anno:n,categoria:c.id,descrizione:'Stima da '+prevY,tipo:'budget',giorno:null,importi:imp,effettivi:{}})}
-  const cf=JSON.parse(JSON.stringify(cfg()));cf.riporti=cf.riporti||{};cf.riporti[String(n)]=y.mesi[11].avanzo;await saveConfig(cf);
+  
   S.anno=n;S.mese=1;location.hash='#home';render();toast('Previsionale '+n+' creato');
 }
 
@@ -1423,6 +1435,7 @@ function splashEnd(msg){
 }
 // ---------- riporto: proposta al primo accesso del nuovo anno ----------
 function checkRiporto(){
+  return; // dal 10/11/2026 il riporto è automatico
   if(!SYNC.api||SYNC.err||!S.ready)return;
   const Yr=today().getFullYear(),key='budget-riporto-'+Yr;
   if(lsGet(key,null))return;
