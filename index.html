@@ -544,7 +544,7 @@ function ecatOptions(sel){return '<option value="">Nessuna</option>'+catEnt().ma
 function catName(id){const c=cats().find(c=>c.id===id);return c?c.nome:(id||'')}
 function Y(anno=S.anno,D=S.D){return computeYear(D,anno,today())}
 function anni(){const t=today().getFullYear();const s=new Set([t,t+1,S.anno]);S.D.stipendi.forEach(x=>s.add(x.anno));S.D.previsioni.forEach(x=>s.add(x.anno));S.D.movimenti.forEach(x=>s.add(x.anno));return [...s].sort()}
-function previsionaleCreato(a){return S.D.previsioni.some(p=>p.anno===a&&(p.origine==='previsionale'||/^Stima da /.test(p.descrizione||'')))||S.D.movimenti.some(p=>p.anno===a&&!p.gruppo)}
+function previsionaleCreato(a){return S.D.previsioni.some(p=>p.anno===a&&(p.origine==='previsionale'||/^Stima da /.test(p.descrizione||'')))}
 function haDati(a){return S.D.previsioni.some(p=>p.anno===a)||S.D.movimenti.some(p=>p.anno===a)}
 
 function clean(o){const d=Object.assign({},o);delete d.id;return d}
