@@ -394,3 +394,17 @@ body{height:100%;overflow:hidden;background:var(--bg)}
 .pg.fit .krow .kl span{font-size:14px}
 .pg.fit .krow .kl small{font-size:11.5px}
 .pg.fit .krow .kv{font-size:15px}
+
+/* Registro › Analisi */
+.an-f{justify-content:center;min-height:44px;width:100%}
+.an-f.on{background:var(--ink);color:var(--bg)}
+.an-reset{align-self:flex-start;border:0;background:none;color:var(--sub);font:600 14px var(--font);text-decoration:underline;padding:4px 2px;min-height:32px}
+.an-b{width:100%;text-align:left}
+.an-b .bar{margin-top:6px}
+.an-b.on{background:var(--soft)}
+.an-mh{display:flex;justify-content:space-between;align-items:baseline;gap:10px;margin:14px 4px 6px;font-size:14px;font-weight:700;color:var(--sub)}
+.an-mh .num{color:var(--ink)}
+.an-pick .item{cursor:pointer;min-height:52px}
+.an-pick input[type=checkbox]{width:24px;height:24px;accent-color:var(--ink);flex:none}
+.an-row{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+.an-row .an-f{padding:4px 8px;font-size:14px;line-height:1.15;white-space:normal;text-align:center;height:auto;min-height:46px}
