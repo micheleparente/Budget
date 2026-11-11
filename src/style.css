@@ -378,19 +378,19 @@ body{height:100%;overflow:hidden;background:var(--bg)}
 .pg.fit .hh-hero{flex:1 1 0;min-height:176px;justify-content:center;gap:6px;padding-top:0}
 @supports (container-type:size){
   .pg.fit .hh-hero{container-type:size}
-  .pg.fit .hero-ring{--rs:max(150px,min(236px,64vw,calc(100cqh - 26px)))}
+  .pg.fit .hero-ring{--rs:max(150px,min(204px,56vw,calc(100cqh - 26px)))}
 }
 .pg.fit .qa{flex:none}
 .pg.fit .qa a,.pg.fit .qa button{gap:6px;font-size:12px}
 .pg.fit .qa .qi{width:48px;height:48px;border-radius:24px}
 .pg.fit .qa .qi svg{width:20px;height:20px}
-.pg.fit .klist{padding:2px 16px;gap:0}
-.pg.fit .krow{min-height:42px;padding:3px 0}
+.pg.fit .klist{padding:4px 18px;gap:0}
+.pg.fit .krow{min-height:50px;padding:5px 0}
 .pg.fit .krow .kl{line-height:1.3}
 .pg.fit .hero-c{padding:0 9%}
 .pg.fit .hero-c .rate{font-size:min(13px,calc(var(--rs) * .058));text-wrap:balance;line-height:1.25}
 .pg.fit .hero-c .lbl{font-size:min(14px,calc(var(--rs) * .065))}
-@media (max-height:720px){.pg.fit .krow .kl small{display:none}.pg.fit .krow{min-height:38px}.pg.fit .qa .qi{width:44px;height:44px}}
+@media (max-height:720px){.pg.fit .krow .kl small{display:none}.pg.fit .krow{min-height:44px}.pg.fit .qa .qi{width:44px;height:44px}}
 .pg.fit .krow .kl span{font-size:14px}
 .pg.fit .krow .kl small{font-size:11.5px}
 .pg.fit .krow .kv{font-size:15px}
