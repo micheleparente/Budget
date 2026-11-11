@@ -237,7 +237,8 @@ tr.click{cursor:pointer}
 .dati-card h2{margin-bottom:0}
 .dati-card .actions{flex-direction:column}
 .dati-card .actions>*{width:100%;justify-content:center;min-height:50px;flex:none}
-html.priv .num,html.priv .amt,html.priv .t-v,html.priv .hero-c .big,html.priv .krow .kv,html.priv .hero-note strong,html.priv .hero-c .rate,html.priv .ring-center .big,html.priv td:not(:first-child),html.priv svg text,html.priv .rate-line,html.priv .sum-line strong{filter:blur(7px);user-select:none;transition:filter .2s}
+html.priv svg text{filter:blur(6px);user-select:none}
+html.priv .pos,html.priv .neg{color:inherit!important}
 html.priv .sec-title,html.priv h1,html.priv h2{filter:none}
 .icon-btn[data-act=priv][aria-pressed=true]{color:var(--accent)}
 .choice{display:flex;flex-direction:column;gap:10px;margin-top:6px}
@@ -641,9 +642,10 @@ function buildWorkbook(ExcelJS,D,anno,oggi,nome){
 const MESI=['Gennaio','Febbraio','Marzo','Aprile','Maggio','Giugno','Luglio','Agosto','Settembre','Ottobre','Novembre','Dicembre'];
 const MB=['Gen','Feb','Mar','Apr','Mag','Giu','Lug','Ago','Set','Ott','Nov','Dic'];
 const NF=new Intl.NumberFormat('it-IT',{minimumFractionDigits:2,maximumFractionDigits:2});
-const eur=v=>(v<0?'−':'')+NF.format(Math.abs(v))+' €';
-const sgn=v=>(v>0?'+':v<0?'−':'')+NF.format(Math.abs(v))+' €';
-const n2=v=>(v<0?'−':'')+NF.format(Math.abs(v));
+const PRIV=()=>typeof S!=='undefined'&&S.priv,MASK='••••';
+const eur=v=>PRIV()?MASK+' €':(v<0?'−':'')+NF.format(Math.abs(v))+' €';
+const sgn=v=>PRIV()?MASK+' €':(v>0?'+':v<0?'−':'')+NF.format(Math.abs(v))+' €';
+const n2=v=>PRIV()?MASK:(v<0?'−':'')+NF.format(Math.abs(v));
 const inp=v=>v==null||v===''?'':NF.format(+v).replace(/\./g,'');
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const num=s=>{if(s==null)return NaN;const t=String(s).trim().replace(/\s|€/g,'').replace(/\.(?=\d{3}(\D|$))/g,'').replace(',','.');return t===''?NaN:Number(t)};
@@ -818,8 +820,8 @@ function heroRing(y,m,mi){
   const C=2*Math.PI*112;let lbl,rate;
   if(st==='corrente'){const t=today();const dim=new Date(S.anno,S.mese,0).getDate();const left=dim-t.getDate()+1;lbl=over?'Sei oltre di':'Ti restano';rate=over?'Spese sopra la disponibilità':`${eur(m.saldo/left)} al giorno · ${left} ${left===1?'giorno':'giorni'}`}
   else if(st==='chiuso'){lbl='Saldo di '+MESI[mi];rate='Mese chiuso'}else{lbl='Saldo previsto';rate='Previsione'}
-  const v=Math.abs(m.saldo),int=Math.trunc(v).toLocaleString('it-IT'),dec=NF.format(v).split(',')[1];
-  return `<section class="hh-hero" aria-label="Il mese"><div class="hero-ring"><svg viewBox="0 0 236 236" role="img" aria-label="Usato il ${Math.round(used*100)}% della disponibilità"><circle cx="118" cy="118" r="112" fill="none" stroke="var(--line)" stroke-width="4"/><circle cx="118" cy="118" r="112" fill="none" stroke="${over?'var(--neg)':'var(--ink)'}" stroke-width="4" stroke-linecap="round" stroke-dasharray="${(pct*C).toFixed(1)} ${C.toFixed(1)}" transform="rotate(-90 118 118)"/></svg><div class="hero-c"><span class="lbl">${lbl}</span><span class="big num ${over?'neg':''}" style="--len:${int.length+2}">${over?'−':''}${int}<small>,${dec} €</small></span><span class="rate">${rate}</span></div></div><p class="hero-note">Spese <strong class="num">${eur(m.spese)}</strong> su <strong class="num">${eur(m.disp)}</strong> · <strong class="num ${used>1?'neg':''}">${Math.round(used*100)}%</strong></p></section>`;
+  const v=Math.abs(m.saldo),int=PRIV()?MASK:Math.trunc(v).toLocaleString('it-IT'),dec=PRIV()?'':NF.format(v).split(',')[1];
+  return `<section class="hh-hero" aria-label="Il mese"><div class="hero-ring"><svg viewBox="0 0 236 236" role="img" aria-label="Usato il ${Math.round(used*100)}% della disponibilità"><circle cx="118" cy="118" r="112" fill="none" stroke="var(--line)" stroke-width="4"/><circle cx="118" cy="118" r="112" fill="none" stroke="${over?'var(--neg)':'var(--ink)'}" stroke-width="4" stroke-linecap="round" stroke-dasharray="${(pct*C).toFixed(1)} ${C.toFixed(1)}" transform="rotate(-90 118 118)"/></svg><div class="hero-c"><span class="lbl">${lbl}</span><span class="big num ${over?'neg':''}" style="--len:${int.length+2}">${over&&!PRIV()?'−':''}${int}<small>${dec?','+dec:''} €</small></span><span class="rate">${rate}</span></div></div><p class="hero-note">Spese <strong class="num">${eur(m.spese)}</strong> su <strong class="num">${eur(m.disp)}</strong> · <strong class="num ${used>1?'neg':''}">${Math.round(used*100)}%</strong></p></section>`;
 }
 function azioniRapide(){
   const i=p=>`<span class="qi"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${p}</svg></span>`;
@@ -845,7 +847,7 @@ function vHome(){
 }
 
 // ---------- DASHBOARD ----------
-const n0=v=>(v>0?'+':v<0?'−':'')+Math.round(Math.abs(v)).toLocaleString('it-IT');
+const n0=v=>PRIV()?MASK:(v>0?'+':v<0?'−':'')+Math.round(Math.abs(v)).toLocaleString('it-IT');
 function saldiChart(y){
   const W=344,H=196,top=22,bot=40,pl=4,step=(W-pl*2)/12,bw=Math.min(20,step-6);
   const vals=y.mesi.map(m=>m.saldo);const mx=Math.max(1,...vals),mn=Math.min(0,...vals);const span=mx-mn||1;
