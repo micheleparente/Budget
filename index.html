@@ -1096,7 +1096,14 @@ function anRisultati(){const A=S.an,gr=anRighe(),t=anTotali(gr);
   const tile=(l,v,n,c,h)=>`<div class="tile ${h?'hero':''}"><span class="t-l">${l}</span><span class="t-v num ${c||''}">${v}</span><span class="t-n">${n}</span></div>`;
   const nmov=`${t.n} ${t.n===1?'movimento':'movimenti'}`;
   let T;
-  if(A.tipo==='entrate')T=tile('Entrate',eur(r2(t.ent)),A.prev?'con stime':'ricevute','',true)+tile('Media al mese',eur(r2(t.ent/nm)),`${nm} ${nm===1?'mese':'mesi'}`)+tile('Movimenti',String(t.n),'nel periodo')+tile('Mese più alto',top?esc(top[0]):'—',top?eur(r2(top[1])):'');
+  if(A.tipo==='entrate'){const ms=anMesi(),mc=A.prev?ms:ms.filter(x=>monthState(x.anno,x.m,today())==='chiuso'),use=mc.length?mc:ms;
+    const stdTot=r2(use.reduce((a,x)=>a+Y(x.anno).std,0)),stdM=r2(stdTot/use.length);
+    let spot=0;gr.forEach(g=>g.rows.forEach(r=>{if(r.k==='mov'&&r.x.tipo==='spot')spot+=r.importo}));spot=r2(spot);
+    const uk=new Set(use.map(x=>x.anno*100+x.m));let stip=0;gr.forEach(g=>{if(uk.has(g.anno*100+g.m))g.rows.forEach(r=>{if(r.entrata&&!anIsReso(r)&&!(r.k==='mov'&&r.x.tipo==='spot'))stip+=r.importo})});stip=r2(stip);const sc=r2(stip-stdTot),anniP=[...new Set(use.map(x=>x.anno))];
+    T=tile('Entrate',eur(r2(t.ent)),A.prev?'con stime':'ricevute','',true)+
+      tile('Stipendio standard',eur(stdM),anniP.length>1?'media degli anni':'al mese')+
+      tile('Stipendi vs standard',sgn(sc),`su ${eur(stdTot)} · ${use.length} ${use.length===1?'mese':'mesi'}`,sc<0?'neg':sc>0?'pos':'')+
+      tile('Entrate spot',eur(spot),'vendite, rimborsi, regali')}
   else if(A.tipo==='tutti')T=tile('Uscite',eur(t.spese),t.res?'resi −'+eur(r2(t.res))+' già tolti':'al netto dei resi','',true)+tile('Entrate',eur(r2(t.ent)),A.prev?'con stime':'ricevute','pos')+tile('Netto',sgn(r2(t.ent-t.spese)),'entrate − uscite',t.ent-t.spese<0?'neg':'pos')+tile('Media uscite',eur(r2(t.spese/nm)),`al mese · ${nm} ${nm===1?'mese':'mesi'}`);
   else if(anMesi().length===1){let big=null;gr.forEach(g=>g.rows.forEach(r=>{const ok=A.tipo==='resi'?anIsReso(r):!r.entrata;if(ok&&(!big||r.importo>big.importo))big=r}));const tv=A.tipo==='resi'?r2(t.res):t.spese;
     T=tile(A.tipo==='resi'?'Resi':'Uscite',eur(tv),A.tipo==='resi'?'rientrati':(t.res?'resi −'+eur(r2(t.res))+' già tolti':'al netto dei resi'),'',true)+tile('Movimenti',String(t.n),'nel mese')+tile(A.tipo==='resi'?'Reso più alto':'Spesa più alta',big?eur(big.importo):'—',big?esc(regDesc(big)):'')+tile('Media a movimento',t.n?eur(r2(tv/t.n)):'—',`${t.n} ${t.n===1?'movimento':'movimenti'}`)}
