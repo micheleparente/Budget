@@ -440,6 +440,7 @@ function vAnalisi(){
   const altri=(A.min!==''||A.max!==''?1:0)+(A.prev?1:0);
   const nAtt=(A.cats.length?1:0)+(A.met.length?1:0)+(A.q?1:0)+(A.min!==''||A.max!==''?1:0)+(A.prev?1:0)+(A.tipo!=='uscite'?1:0)+(A.per!=='anno'?1:0);
   const filtri=`<div class="seg fit" role="group" aria-label="Periodo">${per.map(([k,l])=>`<button data-act="anper" data-k="${k}" aria-pressed="${A.per===k}">${l}</button>`).join('')}</div>`+
+    (A.per==='mese'||A.per==='trim'||A.per==='anno'?`<div class="an-nav"><button class="ghost" data-act="anpp" aria-label="Periodo precedente">${ICON.prev}</button><span class="an-nl">${A.per==='mese'?MESI[S.mese-1]+' '+S.anno:A.per==='trim'?(Math.floor((S.mese-1)/3)+1)+'° trimestre '+S.anno:S.anno}</span><button class="ghost" data-act="annx" aria-label="Periodo successivo">${ICON.next}</button></div>`:'')+
     (A.per==='range'?`<div class="two"><div class="field"><label for="an-da">Dal mese</label>${sel('an-da',A.da,S.anno+'-01')}</div><div class="field"><label for="an-a">Al mese</label>${sel('an-a',A.a,S.anno+'-12')}</div></div>`:'')+
     `<div class="seg fit" role="group" aria-label="Tipo di movimento">${tipi.map(([k,l])=>`<button data-act="antipo" data-k="${k}" aria-pressed="${A.tipo===k}">${l}</button>`).join('')}</div>`+
     `<div class="an-row"><button class="pill-btn soft an-f ${A.cats.length?'on':''}" data-act="ancats">${A.cats.length?(A.cats.length===1?esc(catName(A.cats[0])):A.cats.length+' categorie'):'Categorie'}</button><button class="pill-btn soft an-f ${A.met.length?'on':''}" data-act="anmets">${A.met.length?(A.met.length===1?esc(A.met[0]):A.met.length+' metodi'):'Metodi'}</button><button class="pill-btn soft an-f ${altri?'on':''}" data-act="analtri">${altri?'Altri filtri ('+altri+')':'Altri filtri'}</button></div>`+
@@ -456,6 +457,8 @@ function anRisultati(){const A=S.an,gr=anRighe(),t=anTotali(gr);
   let T;
   if(A.tipo==='entrate')T=tile('Entrate',eur(r2(t.ent)),A.prev?'con stime':'ricevute','',true)+tile('Media al mese',eur(r2(t.ent/nm)),`${nm} ${nm===1?'mese':'mesi'}`)+tile('Movimenti',String(t.n),'nel periodo')+tile('Mese più alto',top?esc(top[0]):'—',top?eur(r2(top[1])):'');
   else if(A.tipo==='tutti')T=tile('Uscite',eur(t.spese),t.res?'resi −'+eur(r2(t.res))+' già tolti':'al netto dei resi','',true)+tile('Entrate',eur(r2(t.ent)),A.prev?'con stime':'ricevute','pos')+tile('Netto',sgn(r2(t.ent-t.spese)),'entrate − uscite',t.ent-t.spese<0?'neg':'pos')+tile('Media uscite',eur(r2(t.spese/nm)),`al mese · ${nm} ${nm===1?'mese':'mesi'}`);
+  else if(anMesi().length===1){let big=null;gr.forEach(g=>g.rows.forEach(r=>{const ok=A.tipo==='resi'?anIsReso(r):!r.entrata;if(ok&&(!big||r.importo>big.importo))big=r}));const tv=A.tipo==='resi'?r2(t.res):t.spese;
+    T=tile(A.tipo==='resi'?'Resi':'Uscite',eur(tv),A.tipo==='resi'?'rientrati':(t.res?'resi −'+eur(r2(t.res))+' già tolti':'al netto dei resi'),'',true)+tile('Movimenti',String(t.n),'nel mese')+tile(A.tipo==='resi'?'Reso più alto':'Spesa più alta',big?eur(big.importo):'—',big?esc(regDesc(big)):'')+tile('Media a movimento',t.n?eur(r2(tv/t.n)):'—',`${t.n} ${t.n===1?'movimento':'movimenti'}`)}
   else T=tile(A.tipo==='resi'?'Resi':'Uscite',eur(A.tipo==='resi'?r2(t.res):t.spese),A.tipo==='resi'?'rientrati':(t.res?'resi −'+eur(r2(t.res))+' già tolti':'al netto dei resi'),'',true)+tile('Media al mese',eur(r2((A.tipo==='resi'?t.res:t.spese)/nm)),`${nm} ${nm===1?'mese':'mesi'}`)+tile('Movimenti',String(t.n),'nel periodo')+tile('Mese più alto',top?esc(top[0]):'—',top?eur(r2(Math.abs(top[1]))):'');
   const tiles=`<section class="card" aria-label="Totali del filtro"><div class="an-hd"><p class="eyebrow">${esc(anPerLabel())}${A.prev?' · con previste':''}</p>${S.anAtt?'<button class="an-reset" data-act="anreset">Azzera i filtri</button>':''}</div><div class="tiles">${T}</div></section>`;
   const bc=anBarre(t.cat,'ancat',A.cats),bm=anBarre(t.met,'anmet',A.met),bf=anBarre(t.fonte,null);
@@ -971,6 +974,7 @@ document.addEventListener('click',async e=>{
     case 'anper':S.an.per=k;render();break;
     case 'antipo':S.an.tipo=k;render();break;
     case 'anprev':S.an.prev=!S.an.prev;render();break;
+    case 'anpp':case 'annx':{const d=a==='annx'?1:-1,st=S.an.per==='mese'?1:S.an.per==='trim'?3:12;let i=S.anno*12+(S.mese-1)+d*st;if(S.an.per==='trim')i=i-(i%3);S.anno=Math.floor(i/12);S.mese=i%12+1;render();break}
     case 'anreset':S.an=AN0();render();break;
     case 'ancats':anScegli('cats');break;
     case 'anmets':anScegli('met');break;

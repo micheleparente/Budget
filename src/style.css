@@ -413,3 +413,6 @@ body{height:100%;overflow:hidden;background:var(--bg)}
 .an-hd{display:flex;justify-content:space-between;align-items:center;gap:10px}
 .an-hd .eyebrow{margin:0}
 .an-hd .an-reset{flex:none;min-height:32px;padding:0 2px}
+.an-nav{display:flex;align-items:center;justify-content:space-between;gap:8px;height:48px;padding:0 4px;border-radius:24px;background:var(--glass);border:1px solid var(--glass-line)}
+.an-nav .ghost{width:44px;height:44px;color:var(--ink)}
+.an-nl{font-size:17px;font-weight:800;text-align:center}
