@@ -428,8 +428,8 @@ function anTotali(gr){const t={usc:0,res:0,ent:0,n:0,cat:{},fonte:{},met:{}};
     else if(r.entrata){t.ent+=r.importo;const f=anFonte(r);t.fonte[f]=(t.fonte[f]||0)+r.importo}
     else{t.usc+=r.importo;t.cat[r.cat]=(t.cat[r.cat]||0)+r.importo;const k=r.met||'Senza metodo';t.met[k]=(t.met[k]||0)+r.importo}}));
   t.spese=r2(t.usc-t.res);return t}
-function anBarre(obj,act,sel){const e=Object.entries(obj).map(([k,v])=>[k,r2(v)]).filter(([,v])=>Math.abs(v)>0.004).sort((a,b)=>b[1]-a[1]);if(!e.length)return '';const tot=e.reduce((a,[,v])=>a+Math.max(0,v),0)||1,max=Math.max(...e.map(([,v])=>v))||1;
-  return e.map(([k,v])=>{const nome=act==='ancat'?catName(k)||'Senza categoria':k;const on=sel&&sel.includes(k);return `<button class="item an-b ${on?'on':''}" ${act?`data-act="${act}" data-k="${esc(k)}"`:''}><span class="grow"><span class="t">${esc(nome)}</span><span class="bar"><i style="width:${Math.max(0,v/max*100).toFixed(1)}%;background:var(--ink)"></i></span></span><span class="amt">${eur(v)}<span class="s" style="display:block;font-weight:500">${Math.round(Math.max(0,v)/tot*100)}%</span></span></button>`}).join('')}
+function anBarre(obj,act,sel){const e=Object.entries(obj).map(([k,v])=>[k,r2(v)]).filter(([,v])=>Math.abs(v)>0.004).sort((a,b)=>Math.abs(b[1])-Math.abs(a[1]));if(!e.length)return '';const tot=e.reduce((a,[,v])=>a+Math.abs(v),0)||1,max=Math.max(...e.map(([,v])=>Math.abs(v)))||1;
+  return e.map(([k,v])=>{const nome=act==='ancat'?catName(k)||'Senza categoria':k;const on=sel&&sel.includes(k);const w=Math.min(100,Math.abs(v)/max*100);const neg=v<0;return `<button class="item an-b ${on?'on':''}" ${act?`data-act="${act}" data-k="${esc(k)}"`:''}><span class="grow"><span class="t">${esc(nome)}</span><span class="bar"><i style="width:${w.toFixed(1)}%;background:${neg?'var(--pos)':'var(--ink)'}"></i></span></span><span class="amt ${neg?'pos':''}">${neg?'+'+eur(-v):eur(v)}<span class="s" style="display:block;font-weight:500">${neg?'rientrati':Math.round(Math.abs(v)/tot*100)+'%'}</span></span></button>`}).join('')}
 function vAnalisi(){
   if(!cats().length)return header('Registro',{month:false})+onboarding();
   if(!S.an)S.an=AN0();const A=S.an;
@@ -449,7 +449,7 @@ function vAnalisi(){
 }
 function anRisultati(){const A=S.an,gr=anRighe(),t=anTotali(gr);
   const nm=Math.max(1,anMesi().filter(x=>monthState(x.anno,x.m,today())!=='futuro').length||anMesi().length);
-  const permese={};gr.forEach(g=>{const k=MESI[g.m-1]+(g.anno!==S.anno?' '+g.anno:'');permese[k]=(permese[k]||0)+g.rows.reduce((a,r)=>a+(A.tipo==='entrate'?(r.entrata&&!anIsReso(r)?r.importo:0):(anIsReso(r)?-r.importo:r.entrata?0:r.importo)),0)});
+  const permese={};gr.forEach(g=>{const k=MESI[g.m-1]+(g.anno!==S.anno?' '+g.anno:'');permese[k]=(permese[k]||0)+g.rows.reduce((a,r)=>a+(A.tipo==='entrate'?(r.entrata&&!anIsReso(r)?r.importo:0):A.tipo==='resi'?(anIsReso(r)?r.importo:0):(anIsReso(r)?-r.importo:r.entrata?0:r.importo)),0)});
   const top=Object.entries(permese).sort((x,y)=>y[1]-x[1])[0];
   const tile=(l,v,n,c,h)=>`<div class="tile ${h?'hero':''}"><span class="t-l">${l}</span><span class="t-v num ${c||''}">${v}</span><span class="t-n">${n}</span></div>`;
   const nmov=`${t.n} ${t.n===1?'movimento':'movimenti'}`;
@@ -459,11 +459,11 @@ function anRisultati(){const A=S.an,gr=anRighe(),t=anTotali(gr);
   else T=tile(A.tipo==='resi'?'Resi':'Uscite',eur(A.tipo==='resi'?r2(t.res):t.spese),A.tipo==='resi'?'rientrati':(t.res?'resi −'+eur(r2(t.res))+' già tolti':'al netto dei resi'),'',true)+tile('Media al mese',eur(r2((A.tipo==='resi'?t.res:t.spese)/nm)),`${nm} ${nm===1?'mese':'mesi'}`)+tile('Movimenti',String(t.n),'nel periodo')+tile('Mese più alto',top?esc(top[0]):'—',top?eur(r2(Math.abs(top[1]))):'');
   const tiles=`<section class="card" aria-label="Totali del filtro"><div class="an-hd"><p class="eyebrow">${esc(anPerLabel())}${A.prev?' · con previste':''}</p>${S.anAtt?'<button class="an-reset" data-act="anreset">Azzera i filtri</button>':''}</div><div class="tiles">${T}</div></section>`;
   const bc=anBarre(t.cat,'ancat',A.cats),bm=anBarre(t.met,'anmet',A.met),bf=anBarre(t.fonte,null);
-  const blocchi=(bc?`<p class="sec-title">Uscite per categoria</p><section class="card tight"><div class="list">${bc}</div></section>`:'')+
-    (bm?`<p class="sec-title">Uscite per metodo</p><section class="card tight"><div class="list">${bm}</div></section>`:'')+
+  const blocchi=(bc?`<p class="sec-title">${A.tipo==='resi'?'Resi':'Uscite'} per categoria</p><section class="card tight"><div class="list">${bc}</div></section>`:'')+
+    (bm?`<p class="sec-title">${A.tipo==='resi'?'Resi':'Uscite'} per metodo</p><section class="card tight"><div class="list">${bm}</div></section>`:'')+
     (bf&&A.tipo!=='uscite'?`<p class="sec-title">Entrate per fonte</p><section class="card tight"><div class="list">${bf}</div></section>`:'');
   const lista=gr.length?gr.slice().reverse().map(g=>{const s=r2(g.rows.reduce((a,r)=>a+(anIsReso(r)?-r.importo:r.entrata?0:r.importo),0)),e=r2(g.rows.reduce((a,r)=>a+(r.entrata&&!anIsReso(r)?r.importo:0),0));
-    return `<div class="an-mh"><span>${MESI[g.m-1]} ${g.anno}</span><span class="num">${s?'−'+eur(s):''}${s&&e?' · ':''}${e?'+'+eur(e):''}</span></div><section class="card tight"><div class="list">${g.rows.map(regRow).join('')}</div></section>`}).join(''):`<section class="card tight"><div class="list"><p class="empty">Nessun movimento con questi filtri.</p></div></section>`;
+    return `<div class="an-mh"><span>${MESI[g.m-1]} ${g.anno}</span><span class="num ${s<0?'pos':''}">${s>0?'−'+eur(s):s<0?'+'+eur(-s):''}${s&&e?' · ':''}${e?'+'+eur(e):''}</span></div><section class="card tight"><div class="list">${g.rows.map(regRow).join('')}</div></section>`}).join(''):`<section class="card tight"><div class="list"><p class="empty">Nessun movimento con questi filtri.</p></div></section>`;
   return tiles+blocchi+`<p class="sec-title">Movimenti</p>`+lista+(gr.length?`<button class="pill-btn soft" data-act="anexport" style="justify-content:center;width:100%;margin-top:6px">Esporta questi movimenti in Excel</button>`:'')}
 function anScegli(tipo){const A=S.an;const isC=tipo==='cats';
   const voci=isC?catsAnno().map(c=>[c.id,c.nome]):metodi().map(m=>[m,m]);const cur=new Set(isC?A.cats:A.met);
