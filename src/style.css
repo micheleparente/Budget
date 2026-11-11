@@ -408,3 +408,8 @@ body{height:100%;overflow:hidden;background:var(--bg)}
 .an-pick input[type=checkbox]{width:24px;height:24px;accent-color:var(--ink);flex:none}
 .an-row{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
 .an-row .an-f{padding:4px 8px;font-size:14px;line-height:1.15;white-space:normal;text-align:center;height:auto;min-height:46px}
+#an-res{display:flex;flex-direction:column;gap:16px}
+#an-res .an-mh{margin:0 4px -8px}
+.an-hd{display:flex;justify-content:space-between;align-items:center;gap:10px}
+.an-hd .eyebrow{margin:0}
+.an-hd .an-reset{flex:none;min-height:32px;padding:0 2px}

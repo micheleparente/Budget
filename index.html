@@ -429,6 +429,11 @@ body{height:100%;overflow:hidden;background:var(--bg)}
 .an-pick input[type=checkbox]{width:24px;height:24px;accent-color:var(--ink);flex:none}
 .an-row{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
 .an-row .an-f{padding:4px 8px;font-size:14px;line-height:1.15;white-space:normal;text-align:center;height:auto;min-height:46px}
+#an-res{display:flex;flex-direction:column;gap:16px}
+#an-res .an-mh{margin:0 4px -8px}
+.an-hd{display:flex;justify-content:space-between;align-items:center;gap:10px}
+.an-hd .eyebrow{margin:0}
+.an-hd .an-reset{flex:none;min-height:32px;padding:0 2px}
 
 </style>
 </head>
@@ -1075,7 +1080,7 @@ function vAnalisi(){
     `<div class="seg fit" role="group" aria-label="Tipo di movimento">${tipi.map(([k,l])=>`<button data-act="antipo" data-k="${k}" aria-pressed="${A.tipo===k}">${l}</button>`).join('')}</div>`+
     `<div class="an-row"><button class="pill-btn soft an-f ${A.cats.length?'on':''}" data-act="ancats">${A.cats.length?(A.cats.length===1?esc(catName(A.cats[0])):A.cats.length+' categorie'):'Categorie'}</button><button class="pill-btn soft an-f ${A.met.length?'on':''}" data-act="anmets">${A.met.length?(A.met.length===1?esc(A.met[0]):A.met.length+' metodi'):'Metodi'}</button><button class="pill-btn soft an-f ${altri?'on':''}" data-act="analtri">${altri?'Altri filtri ('+altri+')':'Altri filtri'}</button></div>`+
     `<div class="field"><label for="an-q" class="sr">Cerca per descrizione</label><input id="an-q" type="search" enterkeyhint="search" autocomplete="off" placeholder="Cerca per descrizione" value="${esc(A.q)}" data-input="anq"></div>`+
-    (nAtt?`<button class="an-reset" data-act="anreset">Azzera i filtri</button>`:'');
+''; S.anAtt=nAtt;
   return header('Registro',{month:false,h:'Analisi'})+regSeg('analisi')+filtri+`<div id="an-res">${anRisultati()}</div>`;
 }
 function anRisultati(){const A=S.an,gr=anRighe(),t=anTotali(gr);
@@ -1088,9 +1093,9 @@ function anRisultati(){const A=S.an,gr=anRighe(),t=anTotali(gr);
   if(A.tipo==='entrate')T=tile('Entrate',eur(r2(t.ent)),A.prev?'con stime':'ricevute','',true)+tile('Media al mese',eur(r2(t.ent/nm)),`${nm} ${nm===1?'mese':'mesi'}`)+tile('Movimenti',String(t.n),'nel periodo')+tile('Mese più alto',top?esc(top[0]):'—',top?eur(r2(top[1])):'');
   else if(A.tipo==='tutti')T=tile('Uscite',eur(t.spese),t.res?'resi −'+eur(r2(t.res))+' già tolti':'al netto dei resi','',true)+tile('Entrate',eur(r2(t.ent)),A.prev?'con stime':'ricevute','pos')+tile('Netto',sgn(r2(t.ent-t.spese)),'entrate − uscite',t.ent-t.spese<0?'neg':'pos')+tile('Media uscite',eur(r2(t.spese/nm)),`al mese · ${nm} ${nm===1?'mese':'mesi'}`);
   else T=tile(A.tipo==='resi'?'Resi':'Uscite',eur(A.tipo==='resi'?r2(t.res):t.spese),A.tipo==='resi'?'rientrati':(t.res?'resi −'+eur(r2(t.res))+' già tolti':'al netto dei resi'),'',true)+tile('Media al mese',eur(r2((A.tipo==='resi'?t.res:t.spese)/nm)),`${nm} ${nm===1?'mese':'mesi'}`)+tile('Movimenti',String(t.n),'nel periodo')+tile('Mese più alto',top?esc(top[0]):'—',top?eur(r2(Math.abs(top[1]))):'');
-  const tiles=`<section class="card" aria-label="Totali del filtro"><p class="eyebrow">${esc(anPerLabel())}${A.prev?' · con previste':''}</p><div class="tiles">${T}</div></section>`;
+  const tiles=`<section class="card" aria-label="Totali del filtro"><div class="an-hd"><p class="eyebrow">${esc(anPerLabel())}${A.prev?' · con previste':''}</p>${S.anAtt?'<button class="an-reset" data-act="anreset">Azzera i filtri</button>':''}</div><div class="tiles">${T}</div></section>`;
   const bc=anBarre(t.cat,'ancat',A.cats),bm=anBarre(t.met,'anmet',A.met),bf=anBarre(t.fonte,null);
-  const blocchi=(bc?`<p class="sec-title">Uscite per categoria <span class="small muted">· tocca per filtrare</span></p><section class="card tight"><div class="list">${bc}</div></section>`:'')+
+  const blocchi=(bc?`<p class="sec-title">Uscite per categoria</p><section class="card tight"><div class="list">${bc}</div></section>`:'')+
     (bm?`<p class="sec-title">Uscite per metodo</p><section class="card tight"><div class="list">${bm}</div></section>`:'')+
     (bf&&A.tipo!=='uscite'?`<p class="sec-title">Entrate per fonte</p><section class="card tight"><div class="list">${bf}</div></section>`:'');
   const lista=gr.length?gr.slice().reverse().map(g=>{const s=r2(g.rows.reduce((a,r)=>a+(anIsReso(r)?-r.importo:r.entrata?0:r.importo),0)),e=r2(g.rows.reduce((a,r)=>a+(r.entrata&&!anIsReso(r)?r.importo:0),0));
