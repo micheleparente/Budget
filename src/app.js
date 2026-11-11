@@ -45,7 +45,9 @@ const S={
 function applyIcona(){const d=S.icona==='scura'?'-scura':'';const a=document.querySelector('link[rel=apple-touch-icon]');if(a)a.href='apple-touch-icon-b2'+d+'.png';const m=document.querySelector('link[rel=manifest]');if(m)m.href='manifest'+d+'.webmanifest'}
 function saveIcona(){try{localStorage.setItem('budget-icona',S.icona)}catch(e){}applyIcona()}
 function applyPriv(){document.documentElement.classList.toggle('priv',!!S.priv)}
-function applyMode(){const r=document.documentElement;if(S.mode==='auto')r.removeAttribute('data-mode');else r.setAttribute('data-mode',S.mode)}
+function applyMode(){const r=document.documentElement;if(S.mode==='auto')r.removeAttribute('data-mode');else r.setAttribute('data-mode',S.mode);applyTop()}
+function applyTop(){try{const sp=document.getElementById('splash');const c=sp&&!sp.classList.contains('out')?'#000000':getComputedStyle(document.documentElement).getPropertyValue('--top').trim();if(!c)return;document.querySelectorAll('meta[name=theme-color]').forEach(m=>{m.removeAttribute('media');m.content=c})}catch(e){}}
+try{matchMedia('(prefers-color-scheme: dark)').addEventListener('change',()=>applyTop())}catch(e){}
 applyMode();applyPriv();applyIcona();
 function cfg(){return S.D.config||{categorie:[],riporti:{}}}
 const METODI_DEF=['C/C Fineco','Fineco Debit','Fineco Credit','Revolut','AMEX','BBVA'];

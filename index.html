@@ -7,8 +7,8 @@
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="Budget">
-<meta name="theme-color" content="#F4F4F5" media="(prefers-color-scheme: light)">
-<meta name="theme-color" content="#09090B" media="(prefers-color-scheme: dark)">
+<meta name="theme-color" content="#E4E4E7" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#2C2C30" media="(prefers-color-scheme: dark)">
 <meta name="robots" content="noindex, nofollow">
 <title>Budget Michele</title>
 <link rel="manifest" href="manifest.webmanifest">
@@ -25,7 +25,7 @@
   --accent:#18181B; --accent-ink:#18181B; --on-accent:#FAFAFA; --chip:#EBEBEE;
   --pos:#0F7A4A; --neg:#C2410C; --warn-bg:#FFF3E2; --warn-ink:#8A4B08;
   --fixed:#27272A; --var:#A1A1AA;
-  --hero:radial-gradient(130% 100% at 50% 0%,#FFFFFF 0%,#E4E4E7 55%,rgba(244,244,245,0) 100%);
+  --top:#E4E4E7; --hero:linear-gradient(180deg,#E4E4E7 0%,#ECECEE 38%,rgba(244,244,245,0) 100%);
   --glass:rgba(255,255,255,.72); --glass-line:rgba(0,0,0,.08);
   --bar:rgba(250,250,250,.68); --bar-line:rgba(255,255,255,.75); --bar-act:rgba(0,0,0,.07); --bar-sub:#52525B; --bar-shadow:0 10px 30px rgba(0,0,0,.12);
   --font:"Manrope",-apple-system,BlinkMacSystemFont,"Segoe UI",system-ui,sans-serif;
@@ -38,7 +38,7 @@
     --accent:#FAFAFA; --accent-ink:#FAFAFA; --on-accent:#09090B; --chip:#27272A;
     --pos:#4ADE80; --neg:#FF8A4C; --warn-bg:#2B2012; --warn-ink:#FFC27A;
     --fixed:#E4E4E7; --var:#71717A;
-    --hero:radial-gradient(130% 100% at 50% 0%,#52525B 0%,#27272A 45%,rgba(9,9,11,0) 100%);
+    --top:#2C2C30; --hero:linear-gradient(180deg,#2C2C30 0%,#1D1D20 40%,rgba(9,9,11,0) 100%);
     --glass:rgba(255,255,255,.09); --glass-line:rgba(255,255,255,.12);
     --bar:rgba(39,39,42,.64); --bar-line:rgba(255,255,255,.10); --bar-act:rgba(255,255,255,.14); --bar-sub:#A1A1AA; --bar-shadow:0 12px 32px rgba(0,0,0,.55); color-scheme:dark;
   }
@@ -48,7 +48,7 @@
     --accent:#FAFAFA; --accent-ink:#FAFAFA; --on-accent:#09090B; --chip:#27272A;
     --pos:#4ADE80; --neg:#FF8A4C; --warn-bg:#2B2012; --warn-ink:#FFC27A;
     --fixed:#E4E4E7; --var:#71717A;
-    --hero:radial-gradient(130% 100% at 50% 0%,#52525B 0%,#27272A 45%,rgba(9,9,11,0) 100%);
+    --top:#2C2C30; --hero:linear-gradient(180deg,#2C2C30 0%,#1D1D20 40%,rgba(9,9,11,0) 100%);
     --glass:rgba(255,255,255,.09); --glass-line:rgba(255,255,255,.12);
     --bar:rgba(39,39,42,.64); --bar-line:rgba(255,255,255,.10); --bar-act:rgba(255,255,255,.14); --bar-sub:#A1A1AA; --bar-shadow:0 12px 32px rgba(0,0,0,.55); color-scheme:dark;
 }
@@ -685,7 +685,9 @@ const S={
 function applyIcona(){const d=S.icona==='scura'?'-scura':'';const a=document.querySelector('link[rel=apple-touch-icon]');if(a)a.href='apple-touch-icon-b2'+d+'.png';const m=document.querySelector('link[rel=manifest]');if(m)m.href='manifest'+d+'.webmanifest'}
 function saveIcona(){try{localStorage.setItem('budget-icona',S.icona)}catch(e){}applyIcona()}
 function applyPriv(){document.documentElement.classList.toggle('priv',!!S.priv)}
-function applyMode(){const r=document.documentElement;if(S.mode==='auto')r.removeAttribute('data-mode');else r.setAttribute('data-mode',S.mode)}
+function applyMode(){const r=document.documentElement;if(S.mode==='auto')r.removeAttribute('data-mode');else r.setAttribute('data-mode',S.mode);applyTop()}
+function applyTop(){try{const sp=document.getElementById('splash');const c=sp&&!sp.classList.contains('out')?'#000000':getComputedStyle(document.documentElement).getPropertyValue('--top').trim();if(!c)return;document.querySelectorAll('meta[name=theme-color]').forEach(m=>{m.removeAttribute('media');m.content=c})}catch(e){}}
+try{matchMedia('(prefers-color-scheme: dark)').addEventListener('change',()=>applyTop())}catch(e){}
 applyMode();applyPriv();applyIcona();
 function cfg(){return S.D.config||{categorie:[],riporti:{}}}
 const METODI_DEF=['C/C Fineco','Fineco Debit','Fineco Credit','Revolut','AMEX','BBVA'];
@@ -2026,7 +2028,7 @@ function splashEnd(msg){
   if(SPL.done)return;SPL.done=true;clearInterval(SPL.timer);
   splashStep(100,msg||'Pronto');
   const wait=Math.max(0,1800-(Date.now()-SPL.t0));
-  setTimeout(()=>{const el=document.getElementById('splash');if(!el)return;el.classList.add('out');setTimeout(()=>el.remove(),400);checkRiporto()},wait+(msg?900:250));
+  setTimeout(()=>{const el=document.getElementById('splash');if(!el)return;el.classList.add('out');setTimeout(()=>{el.remove();if(typeof applyTop==='function')applyTop()},400);checkRiporto()},wait+(msg?900:250));
 }
 // ---------- riporto: proposta al primo accesso del nuovo anno ----------
 function checkRiporto(){

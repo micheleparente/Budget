@@ -116,7 +116,7 @@ function splashEnd(msg){
   if(SPL.done)return;SPL.done=true;clearInterval(SPL.timer);
   splashStep(100,msg||'Pronto');
   const wait=Math.max(0,1800-(Date.now()-SPL.t0));
-  setTimeout(()=>{const el=document.getElementById('splash');if(!el)return;el.classList.add('out');setTimeout(()=>el.remove(),400);checkRiporto()},wait+(msg?900:250));
+  setTimeout(()=>{const el=document.getElementById('splash');if(!el)return;el.classList.add('out');setTimeout(()=>{el.remove();if(typeof applyTop==='function')applyTop()},400);checkRiporto()},wait+(msg?900:250));
 }
 // ---------- riporto: proposta al primo accesso del nuovo anno ----------
 function checkRiporto(){

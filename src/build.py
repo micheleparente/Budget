@@ -12,8 +12,8 @@ html=f'''<!DOCTYPE html>
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="Budget">
-<meta name="theme-color" content="#F4F4F5" media="(prefers-color-scheme: light)">
-<meta name="theme-color" content="#09090B" media="(prefers-color-scheme: dark)">
+<meta name="theme-color" content="#E4E4E7" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#2C2C30" media="(prefers-color-scheme: dark)">
 <meta name="robots" content="noindex, nofollow">
 <title>Budget Michele</title>
 <link rel="manifest" href="manifest.webmanifest">
